@@ -1,41 +1,51 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Frontend dependencies and build output
+node_modules/
+.next/
+out/
+dist/
+build/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# Frontend environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# testing
-/coverage
+# Backend environment variables
+backend/.env
 
-# next.js
-/.next/
-/out/
+# Python virtual environments
+backend/venv/
+backend/.venv/
+venv/
+.venv/
 
-# production
-/build
+# Python cache and test output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 
-# misc
-.DS_Store
-*.pem
+# Local databases
+backend/vantage.db
+*.db
+*.sqlite
+*.sqlite3
 
-# debug
+# Logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# IDE settings
+.vscode/
+.idea/
 
-# vercel
-.vercel
+# Operating system files
+.DS_Store
+Thumbs.db
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+desktop.ini
