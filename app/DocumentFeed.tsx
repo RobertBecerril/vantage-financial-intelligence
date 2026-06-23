@@ -13,23 +13,42 @@ type DocumentItem = {
   status: string;
 };
 
+function formatStatus(status: string) {
+  return status
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export default function DocumentFeed() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [activeDocumentId, setActiveDocumentId] = useState<number | null>(null);
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   async function fetchDocuments() {
     try {
-      const response = await fetch("http://localhost:8000/api/documents");
+      const response = await fetch("http://localhost:8000/api/documents", {
+        cache: "no-store",
+      });
 
       if (!response.ok) {
-        throw new Error("Could not load documents");
+        throw new Error("Unable to load documents.");
       }
 
-      const data = await response.json();
+      const data: DocumentItem[] = await response.json();
+
       setDocuments(data);
-    } catch {
-      setError("Could not connect to documents API");
+      setError("");
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("Unable to connect to the documents API.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -38,7 +57,9 @@ export default function DocumentFeed() {
   }, []);
 
   async function chunkDocument(documentId: number) {
-    setStatus(`Chunking document ${documentId}...`);
+    setActiveDocumentId(documentId);
+    setMessage("");
+    setError("");
 
     try {
       const response = await fetch(
@@ -48,88 +69,132 @@ export default function DocumentFeed() {
         }
       );
 
+      const responseData = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error("Could not chunk document");
+        throw new Error(
+          responseData?.detail || "Unable to chunk the document."
+        );
       }
 
-      setStatus(`Document ${documentId} chunked successfully.`);
-    } catch {
-      setStatus(`Could not chunk document ${documentId}.`);
+      setMessage(`Document #${documentId} is ready for retrieval.`);
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("Unable to chunk the document.");
+      }
+    } finally {
+      setActiveDocumentId(null);
     }
   }
 
-  if (error) {
+  if (isLoading) {
     return (
-      <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-5 text-red-300">
-        {error}
-      </div>
-    );
-  }
-
-  if (documents.length === 0) {
-    return (
-      <div className="rounded-2xl border border-white/10 bg-black/30 p-5 text-zinc-400">
+      <div className="rounded-lg border border-[#26303d] bg-[#090d13] px-5 py-8 text-sm text-zinc-500">
         Loading documents...
       </div>
     );
   }
 
+  if (documents.length === 0 && !error) {
+    return (
+      <div className="rounded-lg border border-dashed border-[#26303d] px-5 py-10 text-center">
+        <div className="text-sm font-medium text-zinc-300">
+          No documents available
+        </div>
+
+        <p className="mt-2 text-xs text-zinc-600">
+          Stored financial documents will appear here.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5">
-      {status && (
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4 text-sm text-cyan-300">
-          {status}
+    <div className="space-y-4">
+      {(message || error) && (
+        <div
+          className={`rounded-lg border px-4 py-3 text-sm ${
+            error
+              ? "border-red-400/20 bg-red-400/5 text-red-300"
+              : "border-emerald-400/20 bg-emerald-400/5 text-emerald-300"
+          }`}
+        >
+          {error || message}
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="table-shell">
+        <div className="hidden grid-cols-[90px_190px_minmax(0,1fr)_120px_170px] gap-4 border-b border-[#26303d] bg-white/[0.015] px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600 lg:grid">
+          <div>Ticker</div>
+          <div>Document type</div>
+          <div>Document</div>
+          <div>Status</div>
+          <div className="text-right">Actions</div>
+        </div>
+
         {documents.map((document) => (
           <div
             key={document.id}
-            className="rounded-3xl border border-white/10 bg-black/30 p-5 transition hover:border-cyan-400/30"
+            className="border-b border-[#26303d] last:border-b-0"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-2xl font-semibold">{document.ticker}</div>
-                <div className="mt-1 text-xs text-zinc-500">
-                  Document ID: {document.id}
+            <div className="grid gap-4 px-4 py-4 lg:grid-cols-[90px_190px_minmax(0,1fr)_120px_170px] lg:items-center">
+              <div className="flex items-center justify-between lg:block">
+                <div className="text-sm font-semibold text-white">
+                  {document.ticker}
+                </div>
+
+                <div className="text-xs text-zinc-600 lg:hidden">
+                  #{document.id}
                 </div>
               </div>
 
-              <span className="rounded-full bg-purple-400/10 px-3 py-1 text-xs text-purple-300">
+              <div className="text-xs leading-5 text-cyan-300">
                 {document.document_type}
-              </span>
-            </div>
+              </div>
 
-            <h3 className="mt-5 text-lg font-medium leading-7 text-white">
-              {document.title}
-            </h3>
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-zinc-200">
+                  {document.title}
+                </div>
 
-            <p className="mt-3 line-clamp-5 text-sm leading-6 text-zinc-400">
-              {document.raw_text}
-            </p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-600">
+                  {document.raw_text}
+                </p>
+              </div>
 
-            <div className="mt-5 space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-500">Status</span>
-                <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-emerald-300">
-                  {document.status}
+              <div>
+                <span className="inline-flex items-center gap-2 rounded-md border border-emerald-400/15 bg-emerald-400/5 px-2.5 py-1 text-xs text-emerald-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  {formatStatus(document.status)}
                 </span>
               </div>
 
-              <div className="truncate text-xs text-zinc-600">
-                {document.source_url}
+              <div className="flex flex-wrap items-center gap-4 lg:justify-end">
+                <button
+                  type="button"
+                  onClick={() => chunkDocument(document.id)}
+                  disabled={activeDocumentId === document.id}
+                  className="text-xs font-medium text-zinc-300 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {activeDocumentId === document.id
+                    ? "Processing..."
+                    : "Chunk document"}
+                </button>
+
+                <a
+                  href={document.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-medium text-zinc-500 transition hover:text-cyan-300"
+                >
+                  Source
+                </a>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-3">
-              <button
-                onClick={() => chunkDocument(document.id)}
-                className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black transition hover:bg-zinc-200"
-              >
-                Chunk Document
-              </button>
-
+            <div className="border-t border-[#1d2630] bg-black/10 px-4 py-3 lg:pl-[304px]">
               <ChunkViewer documentId={document.id} />
             </div>
           </div>

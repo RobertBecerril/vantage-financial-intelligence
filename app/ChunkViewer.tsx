@@ -18,75 +18,104 @@ type ChunkViewerProps = {
 export default function ChunkViewer({ documentId }: ChunkViewerProps) {
   const [chunks, setChunks] = useState<ChunkItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [status, setStatus] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function fetchChunks() {
-    setStatus("Loading chunks...");
+  async function toggleChunks() {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
 
     try {
       const response = await fetch(
-        `http://localhost:8000/api/documents/${documentId}/chunks`
+        `http://localhost:8000/api/documents/${documentId}/chunks`,
+        {
+          cache: "no-store",
+        }
       );
 
       if (!response.ok) {
-        throw new Error("Could not load chunks");
+        throw new Error("Unable to load document chunks.");
       }
 
-      const data = await response.json();
+      const data: ChunkItem[] = await response.json();
+
       setChunks(data);
       setIsOpen(true);
-      setStatus("");
-    } catch {
-      setStatus("Could not load chunks.");
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("Unable to load document chunks.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
   return (
-    <div className="mt-4">
+    <div>
       <button
-        onClick={fetchChunks}
-        className="rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+        type="button"
+        onClick={toggleChunks}
+        disabled={isLoading}
+        className="text-xs font-medium text-zinc-500 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        View Chunks
+        {isLoading ? "Loading..." : isOpen ? "Hide chunks" : "View chunks"}
       </button>
 
-      {status && <p className="mt-3 text-sm text-zinc-500">{status}</p>}
+      {error && (
+        <div className="mt-3 rounded-md border border-red-400/20 bg-red-400/5 px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
 
       {isOpen && (
-        <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-black/40 p-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-zinc-200">
-              Chunks for Document {documentId}
-            </h4>
+        <div className="mt-4 overflow-hidden rounded-lg border border-[#26303d] bg-[#080c12]">
+          <div className="flex items-center justify-between border-b border-[#26303d] px-4 py-3">
+            <div>
+              <div className="text-xs font-semibold text-zinc-300">
+                Document chunks
+              </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-sm text-zinc-500 hover:text-white"
-            >
-              Close
-            </button>
+              <div className="mt-1 text-[11px] text-zinc-600">
+                {chunks.length} chunk{chunks.length === 1 ? "" : "s"} stored
+              </div>
+            </div>
+
+            <span className="text-[11px] text-zinc-600">
+              Document #{documentId}
+            </span>
           </div>
 
           {chunks.length === 0 ? (
-            <p className="text-sm text-zinc-500">
-              No chunks found yet. Click “Chunk Document” first.
-            </p>
+            <div className="px-4 py-6 text-sm text-zinc-500">
+              No chunks are available for this document.
+            </div>
           ) : (
-            chunks.map((chunk) => (
-              <div
-                key={chunk.id}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-              >
-                <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
-                  <span>Chunk #{chunk.chunk_index}</span>
-                  <span>{chunk.token_estimate} words</span>
-                </div>
+            <div className="divide-y divide-[#26303d]">
+              {chunks.map((chunk) => (
+                <div key={chunk.id} className="px-4 py-4">
+                  <div className="mb-2 flex items-center justify-between gap-4">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.1em] text-cyan-300">
+                      Chunk {chunk.chunk_index + 1}
+                    </div>
 
-                <p className="text-sm leading-6 text-zinc-300">
-                  {chunk.text}
-                </p>
-              </div>
-            ))
+                    <div className="text-[11px] text-zinc-600">
+                      {chunk.token_estimate} estimated tokens
+                    </div>
+                  </div>
+
+                  <p className="text-xs leading-6 text-zinc-400">
+                    {chunk.text}
+                  </p>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

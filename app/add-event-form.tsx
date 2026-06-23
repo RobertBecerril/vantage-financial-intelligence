@@ -6,17 +6,32 @@ type AddEventFormProps = {
   onEventCreated: () => void;
 };
 
-export default function AddEventForm({ onEventCreated }: AddEventFormProps) {
-  const [formData, setFormData] = useState({
-    ticker: "",
-    type: "",
-    signal: "",
-    impact: "Medium",
-    confidence: "",
-    source: "",
-  });
+type EventFormData = {
+  ticker: string;
+  type: string;
+  signal: string;
+  impact: string;
+  confidence: string;
+  source: string;
+};
 
-  const [status, setStatus] = useState("");
+const initialFormData: EventFormData = {
+  ticker: "",
+  type: "",
+  signal: "",
+  impact: "Medium",
+  confidence: "",
+  source: "",
+};
+
+export default function AddEventForm({
+  onEventCreated,
+}: AddEventFormProps) {
+  const [formData, setFormData] =
+    useState<EventFormData>(initialFormData);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   function handleChange(
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -29,9 +44,12 @@ export default function AddEventForm({ onEventCreated }: AddEventFormProps) {
     }));
   }
 
-  async function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("Saving event...");
+
+    setIsSaving(true);
+    setMessage("");
+    setError("");
 
     try {
       const response = await fetch("http://localhost:8000/api/events", {
@@ -39,108 +57,139 @@ export default function AddEventForm({ onEventCreated }: AddEventFormProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          ticker: formData.ticker.trim().toUpperCase(),
+        }),
       });
+
+      const responseData = await response.json().catch(() => null);
 
       if (!response.ok) {
-        throw new Error("Failed to create event");
+        throw new Error(
+          responseData?.detail || "Unable to save the event."
+        );
       }
 
-      setFormData({
-        ticker: "",
-        type: "",
-        signal: "",
-        impact: "Medium",
-        confidence: "",
-        source: "",
-      });
-
-      setStatus("Event saved.");
+      setFormData(initialFormData);
+      setMessage("Signal saved successfully.");
       onEventCreated();
-    } catch {
-      setStatus("Could not save event.");
+    } catch (caughtError) {
+      if (caughtError instanceof Error) {
+        setError(caughtError.message);
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setIsSaving(false);
     }
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-3xl border border-white/10 bg-white/[0.03] p-6"
-    >
-      <div className="mb-5">
-        <h2 className="text-2xl font-semibold">Add Event Signal</h2>
-        <p className="mt-2 text-sm text-zinc-500">
-          Create a new market intelligence event and save it to SQLite.
-        </p>
-      </div>
-
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
-        <input
-          name="ticker"
-          value={formData.ticker}
-          onChange={handleChange}
-          placeholder="Ticker, e.g. MSFT"
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600"
-          required
-        />
+        <label className="space-y-2">
+          <span className="muted-label">Ticker</span>
 
-        <input
-          name="type"
-          value={formData.type}
-          onChange={handleChange}
-          placeholder="Type, e.g. Earnings Call"
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600"
-          required
-        />
+          <input
+            name="ticker"
+            value={formData.ticker}
+            onChange={handleChange}
+            placeholder="MSFT"
+            maxLength={10}
+            required
+            disabled={isSaving}
+            className="field uppercase"
+          />
+        </label>
 
-        <input
-          name="signal"
-          value={formData.signal}
-          onChange={handleChange}
-          placeholder="Signal, e.g. Cloud revenue accelerated"
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 md:col-span-2"
-          required
-        />
+        <label className="space-y-2">
+          <span className="muted-label">Event type</span>
 
-        <select
-          name="impact"
-          value={formData.impact}
-          onChange={handleChange}
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none"
-        >
-          <option value="Low">Low Impact</option>
-          <option value="Medium">Medium Impact</option>
-          <option value="High">High Impact</option>
-        </select>
+          <input
+            name="type"
+            value={formData.type}
+            onChange={handleChange}
+            placeholder="Earnings Call"
+            required
+            disabled={isSaving}
+            className="field"
+          />
+        </label>
 
-        <input
-          name="confidence"
-          value={formData.confidence}
-          onChange={handleChange}
-          placeholder="Confidence, e.g. 82%"
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600"
-          required
-        />
+        <label className="space-y-2 md:col-span-2">
+          <span className="muted-label">Signal</span>
 
-        <input
-          name="source"
-          value={formData.source}
-          onChange={handleChange}
-          placeholder="Source, e.g. Q3 Earnings Transcript"
-          className="rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 md:col-span-2"
-          required
-        />
+          <input
+            name="signal"
+            value={formData.signal}
+            onChange={handleChange}
+            placeholder="Cloud revenue growth accelerated"
+            required
+            disabled={isSaving}
+            className="field"
+          />
+        </label>
+
+        <label className="space-y-2">
+          <span className="muted-label">Impact</span>
+
+          <select
+            name="impact"
+            value={formData.impact}
+            onChange={handleChange}
+            disabled={isSaving}
+            className="field appearance-none"
+          >
+            <option value="Low">Low impact</option>
+            <option value="Medium">Medium impact</option>
+            <option value="High">High impact</option>
+          </select>
+        </label>
+
+        <label className="space-y-2">
+          <span className="muted-label">Confidence</span>
+
+          <input
+            name="confidence"
+            value={formData.confidence}
+            onChange={handleChange}
+            placeholder="82%"
+            required
+            disabled={isSaving}
+            className="field"
+          />
+        </label>
+
+        <label className="space-y-2 md:col-span-2">
+          <span className="muted-label">Source</span>
+
+          <input
+            name="source"
+            value={formData.source}
+            onChange={handleChange}
+            placeholder="Q3 Earnings Transcript"
+            required
+            disabled={isSaving}
+            className="field"
+          />
+        </label>
       </div>
 
-      <div className="mt-5 flex items-center gap-4">
+      <div className="flex flex-col justify-between gap-4 border-t border-[#26303d] pt-5 sm:flex-row sm:items-center">
+        <div className="min-h-5 text-sm">
+          {message && <span className="text-emerald-300">{message}</span>}
+
+          {error && <span className="text-red-300">{error}</span>}
+        </div>
+
         <button
           type="submit"
-          className="rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-zinc-200"
+          disabled={isSaving}
+          className="primary-button"
         >
-          Save Event
+          {isSaving ? "Saving signal..." : "Save signal"}
         </button>
-
-        {status && <span className="text-sm text-zinc-500">{status}</span>}
       </div>
     </form>
   );

@@ -16,46 +16,57 @@ export default function ApiStatus() {
   useEffect(() => {
     async function checkApi() {
       try {
-        const response = await fetch("http://localhost:8000/api/status");
+        const response = await fetch("http://localhost:8000/api/status", {
+          cache: "no-store",
+        });
 
         if (!response.ok) {
-          throw new Error("Backend did not respond correctly");
+          throw new Error("Backend unavailable");
         }
 
-        const result = await response.json();
+        const result: ApiStatusResponse = await response.json();
+
         setData(result);
+        setError("");
       } catch {
-        setError("Backend not connected");
+        setError("Backend unavailable");
       }
     }
 
     checkApi();
   }, []);
 
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
-      <div className="mb-2 text-sm text-zinc-500">Backend Connection</div>
+  const isConnected = Boolean(data);
 
-      {data ? (
-        <>
-          <div className="text-lg font-semibold text-emerald-300">
-            {data.status.toUpperCase()}
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[#26303d] bg-[#0c1118] px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            isConnected
+              ? "bg-emerald-400 shadow-[0_0_12px_rgba(74,222,128,0.45)]"
+              : "bg-red-400"
+          }`}
+        />
+
+        <div>
+          <div className="text-xs font-medium text-zinc-300">
+            Backend status
           </div>
-          <p className="mt-2 text-sm text-zinc-400">{data.message}</p>
-          <p className="mt-2 text-xs text-zinc-600">
-            {data.app} API powered by {data.backend}
-          </p>
-        </>
-      ) : (
-        <>
-          <div className="text-lg font-semibold text-red-300">
-            {error || "Checking..."}
+
+          <div className="mt-0.5 text-[11px] text-zinc-600">
+            {isConnected ? "FastAPI connected" : error || "Checking connection"}
           </div>
-          <p className="mt-2 text-sm text-zinc-400">
-            Make sure FastAPI is running on port 8000.
-          </p>
-        </>
-      )}
+        </div>
+      </div>
+
+      <div
+        className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${
+          isConnected ? "text-emerald-300" : "text-red-300"
+        }`}
+      >
+        {isConnected ? "Online" : "Offline"}
+      </div>
     </div>
   );
 }
