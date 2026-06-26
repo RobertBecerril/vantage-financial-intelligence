@@ -452,4 +452,10 @@ a {
     var(--border-strong),
     transparent
   );
+
+.vantage-wordmark {
+  font-family: var(--font-vantage), Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+ }
 }

@@ -48,16 +48,13 @@ export default function Home() {
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="hidden border-r border-[#232a33] bg-[#090c11] lg:flex lg:flex-col">
           <div className="border-b border-[#232a33] px-5 py-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md border border-cyan-400/30 bg-cyan-400/10 text-sm font-semibold text-cyan-200">
-                V
+            <div>
+              <div className="vantage-wordmark text-[26px] leading-none text-white">
+                Vantage
               </div>
 
-              <div>
-                <div className="text-sm font-semibold text-white">Vantage</div>
-                <div className="mt-0.5 text-[11px] text-zinc-600">
-                  Financial Intelligence
-                </div>
+              <div className="mt-1.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-600">
+                Financial Intelligence
               </div>
             </div>
           </div>
@@ -84,6 +81,7 @@ export default function Home() {
             <div className="rounded-md border border-[#232a33] bg-[#0d1117] p-3">
               <div className="flex items-center gap-2">
                 <span className="status-dot" />
+
                 <span className="text-xs font-medium text-zinc-300">
                   Local development
                 </span>
@@ -103,6 +101,7 @@ export default function Home() {
                 <div className="text-sm font-semibold text-white">
                   Financial Intelligence Workspace
                 </div>
+
                 <div className="mt-0.5 text-xs text-zinc-600">
                   Document analysis and report generation
                 </div>
@@ -111,6 +110,7 @@ export default function Home() {
               <div className="hidden items-center gap-3 sm:flex">
                 <div className="flex items-center gap-2 rounded-md border border-[#232a33] bg-[#0b0f14] px-3 py-2">
                   <span className="status-dot" />
+
                   <span className="text-xs text-zinc-400">API connected</span>
                 </div>
               </div>
@@ -164,6 +164,7 @@ export default function Home() {
             <section id="signals" className="panel">
               <div className="panel-header">
                 <div className="section-title">Recent signals</div>
+
                 <div className="section-description">
                   Stored market events retrieved from the FastAPI backend.
                 </div>
@@ -177,6 +178,7 @@ export default function Home() {
             <section className="panel">
               <div className="panel-header">
                 <div className="section-title">Add signal</div>
+
                 <div className="section-description">
                   Create a structured market event and store it in SQLite.
                 </div>
@@ -190,6 +192,7 @@ export default function Home() {
             <section id="filings" className="panel">
               <div className="panel-header">
                 <div className="section-title">Filing watchlist</div>
+
                 <div className="section-description">
                   Financial filing records currently available for processing.
                 </div>
@@ -203,6 +206,7 @@ export default function Home() {
             <section id="reports" className="panel">
               <div className="panel-header">
                 <div className="section-title">Intelligence reports</div>
+
                 <div className="section-description">
                   Generate and review reports grounded in stored document
                   evidence.
@@ -217,6 +221,7 @@ export default function Home() {
             <section id="documents" className="panel">
               <div className="panel-header">
                 <div className="section-title">Document store</div>
+
                 <div className="section-description">
                   Manage raw financial documents and inspect generated chunks.
                 </div>
@@ -230,6 +235,7 @@ export default function Home() {
             <section id="system" className="panel">
               <div className="panel-header">
                 <div className="section-title">System architecture</div>
+
                 <div className="section-description">
                   Current V1 processing flow.
                 </div>
@@ -239,7 +245,9 @@ export default function Home() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <div className="muted-label">Frontend</div>
+
                     <div className="mt-2 text-sm text-zinc-300">Next.js</div>
+
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
                       Dashboard, forms, reports, and document controls.
                     </div>
@@ -247,7 +255,9 @@ export default function Home() {
 
                   <div>
                     <div className="muted-label">Backend</div>
+
                     <div className="mt-2 text-sm text-zinc-300">FastAPI</div>
+
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
                       REST routes, validation, services, and AI requests.
                     </div>
@@ -255,9 +265,11 @@ export default function Home() {
 
                   <div>
                     <div className="muted-label">Persistence</div>
+
                     <div className="mt-2 text-sm text-zinc-300">
                       SQLite + SQLAlchemy
                     </div>
+
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
                       Documents, chunks, filings, events, and reports.
                     </div>
@@ -265,7 +277,9 @@ export default function Home() {
 
                   <div>
                     <div className="muted-label">Analysis</div>
+
                     <div className="mt-2 text-sm text-zinc-300">OpenAI API</div>
+
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
                       Evidence-grounded financial report generation.
                     </div>
