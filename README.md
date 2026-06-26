@@ -376,6 +376,26 @@ Before any open public deployment, the following should be added:
 * background job processing
 * dependency vulnerability scanning
 
+## Dashboard
+
+![Vantage dashboard](docs/screenshots/dashboard-overview.png)
+
+## Signals and Filings
+
+![Signals and filings](docs/screenshots/signals-filings.png)
+
+## Intelligence Reports
+
+![Vantage intelligence report](docs/screenshots/intelligence-report.png)
+
+## Document Processing
+
+![Document chunks](docs/screenshots/document-chunks.png)
+
+## Architecture
+
+![Vantage V1 architecture](docs/architecture/vantage-v1-architecture.png)
+
 ## V1 Limitations
 
 The current version uses seeded local data and manual document processing.
