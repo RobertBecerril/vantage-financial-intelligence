@@ -154,7 +154,7 @@ The backend includes Pytest integration tests for:
 ## Project Structure
 
 ```text
-lume/
+Vantage/
 ├── app/
 │   ├── ApiStatus.tsx
 │   ├── ChunkViewer.tsx
@@ -246,7 +246,7 @@ Install:
 
 ```bash
 git clone <repository-url>
-cd lume
+cd vantage
 ```
 
 ### 2. Install frontend dependencies
