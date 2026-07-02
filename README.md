@@ -394,7 +394,7 @@ Before any open public deployment, the following should be added:
 
 ## Architecture
 
-![Vantage V1 architecture](docs/architecture/vantage-v1-architecture.png)
+![Vantage V1 architecture](docs/vantage-v1-architecture.png.png)
 
 ## V1 Limitations
 
