@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AddEventForm from "./add-event-form";
 import ApiStatus from "./ApiStatus";
+import ComparisonFeed from "./ComparisonFeed";
 import DocumentFeed from "./DocumentFeed";
 import EventFeed from "./EventFeed";
 import FilingFeed from "./FilingFeed";
@@ -12,6 +13,7 @@ const navigation = [
   { label: "Overview", href: "#overview" },
   { label: "Signals", href: "#signals" },
   { label: "Filings", href: "#filings" },
+  { label: "Comparisons", href: "#comparisons" },
   { label: "Reports", href: "#reports" },
   { label: "Documents", href: "#documents" },
   { label: "System", href: "#system" },
@@ -27,12 +29,12 @@ const workflow = [
     description: "Split long documents into smaller evidence units.",
   },
   {
-    name: "Analyze",
-    description: "Generate grounded intelligence from retrieved context.",
+    name: "Compare",
+    description: "Detect added, removed, and modified filing language.",
   },
   {
-    name: "Persist",
-    description: "Save reports and supporting evidence to the database.",
+    name: "Analyze",
+    description: "Generate grounded intelligence from retrieved context.",
   },
 ];
 
@@ -103,7 +105,7 @@ export default function Home() {
                 </div>
 
                 <div className="mt-0.5 text-xs text-zinc-600">
-                  Document analysis and report generation
+                  Document analysis, filing comparison, and report generation
                 </div>
               </div>
 
@@ -129,8 +131,9 @@ export default function Home() {
                     </h1>
 
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
-                      Review company signals, financial documents, filings, and
-                      generated reports from one workspace.
+                      Review company signals, filings, filing changes,
+                      financial documents, and generated intelligence reports
+                      from one workspace.
                     </p>
                   </div>
 
@@ -203,6 +206,21 @@ export default function Home() {
               </div>
             </section>
 
+            <section id="comparisons" className="panel">
+              <div className="panel-header">
+                <div className="section-title">Filing comparisons</div>
+
+                <div className="section-description">
+                  Compare the two newest filings for a company and review added,
+                  removed, and modified language.
+                </div>
+              </div>
+
+              <div className="panel-body">
+                <ComparisonFeed />
+              </div>
+            </section>
+
             <section id="reports" className="panel">
               <div className="panel-header">
                 <div className="section-title">Intelligence reports</div>
@@ -237,7 +255,7 @@ export default function Home() {
                 <div className="section-title">System architecture</div>
 
                 <div className="section-description">
-                  Current V1 processing flow.
+                  Current V1.5 processing flow.
                 </div>
               </div>
 
@@ -249,7 +267,8 @@ export default function Home() {
                     <div className="mt-2 text-sm text-zinc-300">Next.js</div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Dashboard, forms, reports, and document controls.
+                      Dashboard, forms, reports, filing comparisons, and
+                      document controls.
                     </div>
                   </div>
 
@@ -259,7 +278,8 @@ export default function Home() {
                     <div className="mt-2 text-sm text-zinc-300">FastAPI</div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      REST routes, validation, services, and AI requests.
+                      REST routes, validation, comparison services, and AI
+                      requests.
                     </div>
                   </div>
 
@@ -271,17 +291,21 @@ export default function Home() {
                     </div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Documents, chunks, filings, events, and reports.
+                      Documents, chunks, filings, events, reports, and detected
+                      filing changes.
                     </div>
                   </div>
 
                   <div>
                     <div className="muted-label">Analysis</div>
 
-                    <div className="mt-2 text-sm text-zinc-300">OpenAI API</div>
+                    <div className="mt-2 text-sm text-zinc-300">
+                      Python difflib + OpenAI
+                    </div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Evidence-grounded financial report generation.
+                      Deterministic filing comparison and evidence-grounded
+                      report generation.
                     </div>
                   </div>
                 </div>
@@ -289,7 +313,7 @@ export default function Home() {
             </section>
 
             <footer className="border-t border-[#232a33] py-5 text-xs text-zinc-700">
-              Vantage V1 · Local financial intelligence workspace
+              Vantage V1.5 · Local financial intelligence workspace
             </footer>
           </div>
         </div>
