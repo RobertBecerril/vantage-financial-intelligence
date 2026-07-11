@@ -9,6 +9,7 @@ from app.api.events import router as events_router
 from app.api.filings import router as filings_router
 from app.api.reports import router as reports_router
 from app.database import Base, SessionLocal, engine
+from app.api.sec import router as sec_router
 
 # Import every SQLAlchemy model before create_all().
 # This ensures SQLAlchemy knows which database tables to create.
@@ -73,6 +74,7 @@ app.include_router(documents_router)
 app.include_router(chunks_router)
 app.include_router(ai_reports_router)
 app.include_router(comparisons_router)
+app.include_router(sec_router)
 
 
 @app.get("/")
