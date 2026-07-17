@@ -10,6 +10,7 @@ type SecIngestionResult = {
   skipped: number;
   created_document_ids: number[];
   skipped_accession_numbers: string[];
+  created_chunk_count: number;
 };
 
 export default function SecIngestionPanel() {
@@ -186,15 +187,15 @@ export default function SecIngestionPanel() {
             </div>
           </div>
 
-          <div className="metric-card">
-            <div className="muted-label">Requested</div>
+         <div className="metric-card">
+            <div className="muted-label">Chunks</div>
             <div className="mt-2 text-lg font-semibold text-white">
-              {result.requested}
+                {result.created_chunk_count}
             </div>
             <div className="mt-1 text-xs text-zinc-600">
-              Filing limit
+              Generated automatically
             </div>
-          </div>
+         </div>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-[#26303d] px-5 py-10 text-center">

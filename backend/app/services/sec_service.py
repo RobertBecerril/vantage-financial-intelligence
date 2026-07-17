@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
 from app.models.document import Document
+from app.services.chunk_service import chunk_document
 
 
 load_dotenv()
@@ -266,6 +267,21 @@ def document_exists(
     )
 
 
+def chunk_created_documents(
+    db: Session,
+    documents: list[Document],
+) -> int:
+    created_chunk_count = 0
+
+    for document in documents:
+        chunks = chunk_document(db, document.id)
+
+        if chunks is not None:
+            created_chunk_count += len(chunks)
+
+    return created_chunk_count
+
+
 def ingest_recent_filings(
     db: Session,
     ticker: str,
@@ -333,6 +349,11 @@ def ingest_recent_filings(
         for document in created_documents:
             db.refresh(document)
 
+        created_chunk_count = chunk_created_documents(
+            db=db,
+            documents=created_documents,
+        )
+
     except Exception:
         db.rollback()
         raise
@@ -348,4 +369,5 @@ def ingest_recent_filings(
             for document in created_documents
         ],
         "skipped_accession_numbers": skipped_accession_numbers,
+        "created_chunk_count": created_chunk_count,
     }
