@@ -229,6 +229,19 @@ def create_comparison(db: Session, ticker: str) -> Comparison | None:
 
     older_document, newer_document = matching_documents
 
+    existing_comparison = (
+        db.query(Comparison)
+        .options(joinedload(Comparison.changes))
+        .filter(
+            Comparison.older_document_id == older_document.id,
+            Comparison.newer_document_id == newer_document.id,
+        )
+        .first()
+    )
+
+    if existing_comparison is not None:
+        return existing_comparison
+
     older_sentences = split_into_sentences(older_document.raw_text)
     newer_sentences = split_into_sentences(newer_document.raw_text)
 

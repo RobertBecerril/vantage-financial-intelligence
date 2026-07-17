@@ -169,7 +169,7 @@ def test_missing_comparison_returns_404():
 
 
 def test_comparison_requires_two_matching_filings():
-    response = client.post("/api/comparisons/MSFT")
+    response = client.post("/api/comparisons/ONLYONE")
 
     assert response.status_code == 404
     assert (
