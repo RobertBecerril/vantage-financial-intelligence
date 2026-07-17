@@ -1,18 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import AddEventForm from "./add-event-form";
 import ApiStatus from "./ApiStatus";
 import ComparisonFeed from "./ComparisonFeed";
 import DocumentFeed from "./DocumentFeed";
 import EventFeed from "./EventFeed";
 import FilingFeed from "./FilingFeed";
 import ReportFeed from "./ReportFeed";
+import SecIngestionPanel from "./SecIngestionPanel";
 
 const navigation = [
   { label: "Overview", href: "#overview" },
   { label: "Signals", href: "#signals" },
   { label: "Filings", href: "#filings" },
+  { label: "SEC Ingestion", href: "#sec-ingestion" },
   { label: "Comparisons", href: "#comparisons" },
   { label: "Reports", href: "#reports" },
   { label: "Documents", href: "#documents" },
@@ -39,11 +39,7 @@ const workflow = [
 ];
 
 export default function Home() {
-  const [refreshKey, setRefreshKey] = useState(0);
 
-  function refreshEvents() {
-    setRefreshKey((previous) => previous + 1);
-  }
 
   return (
     <main className="app-shell">
@@ -174,23 +170,11 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <EventFeed refreshKey={refreshKey} />
+                <EventFeed refreshKey={0} />
               </div>
             </section>
 
-            <section className="panel">
-              <div className="panel-header">
-                <div className="section-title">Add signal</div>
-
-                <div className="section-description">
-                  Create a structured market event and store it in SQLite.
-                </div>
-              </div>
-
-              <div className="panel-body">
-                <AddEventForm onEventCreated={refreshEvents} />
-              </div>
-            </section>
+      
 
             <section id="filings" className="panel">
               <div className="panel-header">
@@ -203,6 +187,21 @@ export default function Home() {
 
               <div className="panel-body">
                 <FilingFeed />
+              </div>
+            </section>
+
+            <section id="sec-ingestion" className="panel">
+              <div className="panel-header">
+                <div className="section-title">SEC ingestion</div>
+
+                <div className="section-description">
+                Fetch recent SEC 10-Q or 10-K filings and store them as Vantage
+                documents.
+                </div>
+              </div>
+
+              <div className="panel-body">
+                <SecIngestionPanel />
               </div>
             </section>
 
