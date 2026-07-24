@@ -10,6 +10,7 @@ class SECIngestionResponse(BaseModel):
     created_document_ids: list[int]
     skipped_accession_numbers: list[str]
     created_chunk_count: int
+    created_section_count: int
 
 
 class SECIngestionRequest(BaseModel):

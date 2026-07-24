@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.document import Document
 from app.services.chunk_service import chunk_document
+from app.services.section_service import extract_sections_for_documents
 
 
 load_dotenv()
@@ -354,6 +355,11 @@ def ingest_recent_filings(
             documents=created_documents,
         )
 
+        created_section_count = extract_sections_for_documents(
+            db=db,
+            documents=created_documents,
+        )
+
     except Exception:
         db.rollback()
         raise
@@ -370,4 +376,5 @@ def ingest_recent_filings(
         ],
         "skipped_accession_numbers": skipped_accession_numbers,
         "created_chunk_count": created_chunk_count,
+        "created_section_count": created_section_count,
     }

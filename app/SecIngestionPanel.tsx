@@ -11,6 +11,7 @@ type SecIngestionResult = {
   created_document_ids: number[];
   skipped_accession_numbers: string[];
   created_chunk_count: number;
+  created_section_count: number;
 };
 
 export default function SecIngestionPanel() {
@@ -194,6 +195,16 @@ export default function SecIngestionPanel() {
             </div>
             <div className="mt-1 text-xs text-zinc-600">
               Generated automatically
+            </div>
+         </div>
+
+         <div className="metric-card">
+            <div className="muted-label">Sections</div>
+            <div className="mt-2 text-lg font-semibold text-white">
+                {result.created_section_count}
+            </div>
+            <div className="mt-1 text-xs text-zinc-600">
+              Extracted automatically
             </div>
          </div>
         </div>
