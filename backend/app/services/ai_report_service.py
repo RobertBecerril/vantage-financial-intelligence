@@ -3,9 +3,11 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.chunk import Chunk
+from app.models.comparison import Comparison
+from app.models.comparison_change import ComparisonChange
 from app.models.report import Report
 
 load_dotenv()
@@ -13,16 +15,8 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 CACHE_DURATION_HOURS = 24
-
-
-def get_context_for_ticker(db: Session, ticker: str):
-    return (
-        db.query(Chunk)
-        .filter(Chunk.ticker == ticker.upper())
-        .order_by(Chunk.document_id.asc(), Chunk.chunk_index.asc())
-        .limit(6)
-        .all()
-    )
+MAX_COMPARISON_CHANGES = 12
+MAX_FALLBACK_CHUNKS = 6
 
 
 def get_recent_cached_report(db: Session, ticker: str):
@@ -42,7 +36,72 @@ def get_recent_cached_report(db: Session, ticker: str):
     )
 
 
-def build_context_text(chunks):
+def get_latest_comparison(db: Session, ticker: str):
+    return (
+        db.query(Comparison)
+        .options(joinedload(Comparison.changes))
+        .filter(Comparison.ticker == ticker.upper())
+        .order_by(Comparison.created_at.desc())
+        .first()
+    )
+
+
+def get_context_for_ticker(db: Session, ticker: str):
+    return (
+        db.query(Chunk)
+        .filter(Chunk.ticker == ticker.upper())
+        .order_by(Chunk.document_id.asc(), Chunk.chunk_index.asc())
+        .limit(MAX_FALLBACK_CHUNKS)
+        .all()
+    )
+
+
+def change_importance_score(change: ComparisonChange) -> int:
+    if change.importance == "high":
+        return 3
+
+    if change.importance == "medium":
+        return 2
+
+    return 1
+
+
+def truncate_text(text: str | None, max_chars: int = 900) -> str:
+    if not text:
+        return "[No text]"
+
+    cleaned = " ".join(text.split())
+
+    if len(cleaned) <= max_chars:
+        return cleaned
+
+    return cleaned[:max_chars] + "..."
+
+
+def build_comparison_evidence(comparison: Comparison) -> str:
+    changes = sorted(
+        comparison.changes,
+        key=change_importance_score,
+        reverse=True,
+    )[:MAX_COMPARISON_CHANGES]
+
+    evidence_blocks = []
+
+    for index, change in enumerate(changes, start=1):
+        evidence_blocks.append(
+            f"Change {index}\n"
+            f"Section: {change.section_name}\n"
+            f"Change type: {change.change_type}\n"
+            f"Importance: {change.importance}\n"
+            f"Classifier explanation: {change.explanation}\n"
+            f"Older filing text: {truncate_text(change.old_text)}\n"
+            f"Newer filing text: {truncate_text(change.new_text)}"
+        )
+
+    return "\n\n".join(evidence_blocks)
+
+
+def build_chunk_evidence(chunks):
     context_blocks = []
 
     for chunk in chunks:
@@ -56,22 +115,31 @@ def build_context_text(chunks):
     return "\n\n".join(context_blocks)
 
 
-def create_openai_report(ticker: str, context_text: str):
+def create_openai_report(
+    ticker: str,
+    evidence_text: str,
+    evidence_source: str,
+):
     prompt = f"""
 You are a financial intelligence analyst.
 
-Generate a concise report using ONLY the supplied document evidence.
+Generate a concise financial intelligence report using ONLY the supplied evidence.
 
 Rules:
-- Do not invent facts or numbers.
+- Do not invent facts, numbers, or events.
 - Clearly state when evidence is limited.
-- Base every conclusion on the supplied chunks.
+- Base every conclusion on the supplied evidence.
 - Do not provide personalized investment advice.
+- Focus on material business changes, risk direction, legal/regulatory exposure, liquidity, operations, and management discussion.
+- If confidence or uncertainty is included in the evidence, reflect it honestly.
 
 Ticker: {ticker}
 
-Document evidence:
-{context_text}
+Evidence source:
+{evidence_source}
+
+Evidence:
+{evidence_text}
 
 Return the report in this exact structure:
 
@@ -81,16 +149,19 @@ Detected Signal:
 Why It Matters:
 [2-3 sentences]
 
-Evidence:
+Key Evidence:
 - [specific supporting evidence]
 - [specific supporting evidence]
 - [specific supporting evidence]
 
-Risk Level:
-[Low, Medium, or High]
+Risk Direction:
+[Increased, Decreased, Stable, or Unclear]
 
 Confidence:
-[percentage]
+[Low, Medium, or High, with one short reason]
+
+Uncertainty:
+[What limits the conclusion, or "No major uncertainty based on supplied evidence."]
 
 Executive Summary:
 [short paragraph]
@@ -99,7 +170,7 @@ Executive Summary:
     response = client.responses.create(
         model="gpt-4.1-mini",
         input=prompt,
-        max_output_tokens=600,
+        max_output_tokens=800,
     )
 
     return response.output_text
@@ -108,26 +179,41 @@ Executive Summary:
 def generate_ai_report(db: Session, ticker: str):
     ticker = ticker.strip().upper()
 
-    # Return an existing recent report instead of spending more API credits.
     cached_report = get_recent_cached_report(db, ticker)
 
     if cached_report:
         return cached_report
 
-    chunks = get_context_for_ticker(db, ticker)
+    latest_comparison = get_latest_comparison(db, ticker)
 
-    if not chunks:
-        return None
+    if latest_comparison and latest_comparison.changes:
+        evidence_text = build_comparison_evidence(latest_comparison)
+        evidence_source = (
+            "AI-filtered SEC filing comparison changes, ranked by importance."
+        )
+    else:
+        chunks = get_context_for_ticker(db, ticker)
 
-    context_text = build_context_text(chunks)
-    ai_text = create_openai_report(ticker, context_text)
+        if not chunks:
+            return None
+
+        evidence_text = build_chunk_evidence(chunks)
+        evidence_source = (
+            "Fallback document chunks. No filing comparison changes were found."
+        )
+
+    ai_text = create_openai_report(
+        ticker=ticker,
+        evidence_text=evidence_text,
+        evidence_source=evidence_source,
+    )
 
     new_report = Report(
         ticker=ticker,
         title=f"{ticker} AI Intelligence Report",
         summary=ai_text,
         confidence_score="AI-generated",
-        evidence=context_text[:1000],
+        evidence=evidence_text[:1000],
     )
 
     db.add(new_report)
