@@ -1,3 +1,4 @@
+import os
 import re
 from difflib import SequenceMatcher
 from typing import Iterable
@@ -8,12 +9,18 @@ from app.models.comparison import Comparison
 from app.models.comparison_change import ComparisonChange
 from app.models.document import Document
 from app.models.filing_section import FilingSection
+from app.services.materiality_service import classify_change_materiality
 
 
 SIMILARITY_THRESHOLD = 0.72
 MAX_SAVED_CHANGES = 75
 MAX_SENTENCES_PER_SECTION = 250
 MAX_FULL_DOCUMENT_SENTENCES = 400
+MAX_AI_CLASSIFICATIONS = 50
+
+ENABLE_AI_MATERIALITY = (
+    os.getenv("ENABLE_AI_MATERIALITY", "true").lower() == "true"
+)
 
 
 HIGH_PRIORITY_TERMS = [
@@ -202,6 +209,36 @@ def is_mostly_reporting_period_change(
     return similarity_after_normalization >= 0.94
 
 
+def looks_like_table_of_contents(text: str | None) -> bool:
+    if not text:
+        return False
+
+    cleaned_text = normalize_text(text).lower()
+
+    toc_patterns = [
+        r"item\s+\d+[a-z]?\.",
+        r"management[’']s discussion.*results of operations.*liquidity",
+        r"\b\d+\s+recent developments\b",
+        r"\b\d+\s+results of operations\b",
+        r"\b\d+\s+liquidity and capital resources\b",
+        r"\b\d+\s+quantitative and qualitative disclosures\b",
+        r"\b\d+\s+controls and procedures\b",
+    ]
+
+    matched_pattern_count = sum(
+        1
+        for pattern in toc_patterns
+        if re.search(pattern, cleaned_text, flags=re.IGNORECASE)
+    )
+
+    number_count = len(re.findall(r"\b\d{1,3}\b", cleaned_text))
+    word_count = len(cleaned_text.split())
+
+    return matched_pattern_count >= 2 or (
+        number_count >= 8 and word_count <= 140
+    )
+
+
 def is_low_information_sentence(text: str | None) -> bool:
     if not text:
         return True
@@ -211,6 +248,9 @@ def is_low_information_sentence(text: str | None) -> bool:
     if len(cleaned_text.split()) < 8:
         return True
 
+    if looks_like_table_of_contents(cleaned_text):
+        return True
+
     low_value_patterns = [
         r"table of contents",
         r"page\s+\d+",
@@ -218,6 +258,10 @@ def is_low_information_sentence(text: str | None) -> bool:
         r"exhibit\s+\d+",
         r"index",
         r"not applicable",
+        r"item\s+\d+.*\d+\s+recent developments",
+        r"management[’']s discussion.*results of operations.*liquidity",
+        r"\b\d+\s+results of operations\b",
+        r"\b\d+\s+liquidity and capital resources\b",
     ]
 
     return any(
@@ -255,6 +299,11 @@ def is_noise_change(change: dict) -> bool:
     ):
         return True
 
+    combined_text = f"{old_text or ''} {new_text or ''}"
+
+    if looks_like_table_of_contents(combined_text):
+        return True
+
     if change_type == "modified":
         if is_mostly_reporting_period_change(old_text, new_text):
             return True
@@ -262,8 +311,6 @@ def is_noise_change(change: dict) -> bool:
     if not has_material_terms(old_text, new_text):
         if change_type == "modified":
             return True
-
-        combined_text = f"{old_text or ''} {new_text or ''}"
 
         if len(combined_text.split()) < 20:
             return True
@@ -275,17 +322,53 @@ def build_explanation(
     change_type: str,
     old_text: str | None,
     new_text: str | None,
+    ai_classification: dict | None = None,
 ) -> str:
+    if ai_classification:
+        category = ai_classification.get("category", "uncertain")
+        risk_direction = ai_classification.get(
+            "risk_direction",
+            "uncertain",
+        )
+        confidence = ai_classification.get("confidence", 0.5)
+        uncertainty_reason = ai_classification.get(
+            "uncertainty_reason",
+            "No uncertainty explanation was provided.",
+        )
+        reason = ai_classification.get(
+            "reason",
+            "The AI classifier kept this change for review.",
+        )
+
+        try:
+            confidence_percent = round(float(confidence) * 100)
+        except (TypeError, ValueError):
+            confidence_percent = 50
+
+        return (
+            f"AI category: {category}. "
+            f"Risk direction: {risk_direction}. "
+            f"Confidence: {confidence_percent}%. "
+            f"Uncertainty: {uncertainty_reason} "
+            f"Reason: {reason}"
+        )
+
     if change_type == "added":
-        return "This material language appears in the newer filing but not in the older filing."
+        return (
+            "This material language appears in the newer filing but not in the "
+            "older filing."
+        )
 
     if change_type == "removed":
-        return "This material language appeared in the older filing but is absent from the newer filing."
+        return (
+            "This material language appeared in the older filing but is absent "
+            "from the newer filing."
+        )
 
     if change_type == "modified":
         return (
-            "The newer filing contains similar material language, but the wording "
-            "or risk framing changed from the prior filing."
+            "The newer filing contains similar material language, but the "
+            "wording or risk framing changed from the prior filing."
         )
 
     return "A material filing change was detected."
@@ -372,6 +455,26 @@ def change_priority_score(change: dict) -> int:
     return 1
 
 
+def ai_importance_score(change: dict) -> int:
+    ai_classification = change.get("ai_classification") or {}
+    importance = ai_classification.get("importance")
+    confidence = ai_classification.get("confidence", 0.5)
+
+    if importance == "high":
+        base_score = 3
+    elif importance == "medium":
+        base_score = 2
+    else:
+        base_score = 1
+
+    try:
+        confidence_score = float(confidence)
+    except (TypeError, ValueError):
+        confidence_score = 0.5
+
+    return base_score * 100 + int(confidence_score * 100)
+
+
 def filter_meaningful_changes(changes: list[dict]) -> list[dict]:
     filtered_changes = [
         change
@@ -386,6 +489,75 @@ def filter_meaningful_changes(changes: list[dict]) -> list[dict]:
     )
 
     return sorted_changes[:MAX_SAVED_CHANGES]
+
+
+def apply_ai_materiality_filter(
+    ticker: str,
+    changes: list[dict],
+) -> list[dict]:
+    if not ENABLE_AI_MATERIALITY:
+        return changes
+
+    changes_to_classify = changes[:MAX_AI_CLASSIFICATIONS]
+    classified_changes: list[dict] = []
+
+    for change in changes_to_classify:
+        try:
+            classification = classify_change_materiality(
+                ticker=ticker,
+                section_name=change["section_name"],
+                change_type=change["change_type"],
+                old_text=change["old_text"],
+                new_text=change["new_text"],
+            )
+        except Exception:
+            classification = {
+                "keep": True,
+                "category": "classifier_error",
+                "importance": determine_importance(
+                    change["change_type"],
+                    change["old_text"],
+                    change["new_text"],
+                ),
+                "risk_direction": "uncertain",
+                "confidence": 0.5,
+                "uncertainty_reason": (
+                    "The AI materiality classifier failed, so this change was "
+                    "kept using rule-based importance."
+                ),
+                "reason": (
+                    "The system could not complete AI classification for this "
+                    "change."
+                ),
+            }
+
+        if classification.get("keep", True):
+            change["ai_classification"] = classification
+            classified_changes.append(change)
+
+    sorted_classified_changes = sorted(
+        classified_changes,
+        key=ai_importance_score,
+        reverse=True,
+    )
+
+    return sorted_classified_changes[:MAX_SAVED_CHANGES]
+
+
+def get_final_importance(change: dict) -> str:
+    ai_classification = change.get("ai_classification")
+
+    if ai_classification:
+        ai_importance = ai_classification.get("importance", "medium").lower()
+
+        if ai_importance in ["high", "medium", "low"]:
+            return ai_importance
+
+    return determine_importance(
+        change["change_type"],
+        change["old_text"],
+        change["new_text"],
+    )
 
 
 def get_two_newest_matching_filings(
@@ -515,7 +687,8 @@ def compare_full_documents(
 
 
 def create_comparison(db: Session, ticker: str) -> Comparison | None:
-    matching_documents = get_two_newest_matching_filings(db, ticker)
+    normalized_ticker = ticker.strip().upper()
+    matching_documents = get_two_newest_matching_filings(db, normalized_ticker)
 
     if matching_documents is None:
         return None
@@ -551,28 +724,26 @@ def create_comparison(db: Session, ticker: str) -> Comparison | None:
 
         comparison_method = "full-document"
 
-    changes = filter_meaningful_changes(raw_changes)
+    rule_filtered_changes = filter_meaningful_changes(raw_changes)
+
+    changes = apply_ai_materiality_filter(
+        ticker=normalized_ticker,
+        changes=rule_filtered_changes,
+    )
 
     comparison = Comparison(
-        ticker=ticker.strip().upper(),
+        ticker=normalized_ticker,
         older_document_id=older_document.id,
         newer_document_id=newer_document.id,
         summary=(
-            f"Detected {len(changes)} meaningful {comparison_method} changes "
-            f"between {older_document.reporting_period or older_document.title} "
+            f"Detected {len(changes)} AI-filtered meaningful "
+            f"{comparison_method} changes between "
+            f"{older_document.reporting_period or older_document.title} "
             f"and {newer_document.reporting_period or newer_document.title}."
         ),
         overall_risk_direction=(
             "increased"
-            if any(
-                determine_importance(
-                    change["change_type"],
-                    change["old_text"],
-                    change["new_text"],
-                )
-                == "high"
-                for change in changes
-            )
+            if any(get_final_importance(change) == "high" for change in changes)
             else "stable"
         ),
         status="completed",
@@ -584,6 +755,8 @@ def create_comparison(db: Session, ticker: str) -> Comparison | None:
     comparison_changes = []
 
     for change in changes:
+        ai_classification = change.get("ai_classification")
+
         comparison_changes.append(
             ComparisonChange(
                 comparison_id=comparison.id,
@@ -591,15 +764,12 @@ def create_comparison(db: Session, ticker: str) -> Comparison | None:
                 section_name=change["section_name"],
                 old_text=change["old_text"],
                 new_text=change["new_text"],
-                importance=determine_importance(
-                    change["change_type"],
-                    change["old_text"],
-                    change["new_text"],
-                ),
+                importance=get_final_importance(change),
                 explanation=build_explanation(
                     change["change_type"],
                     change["old_text"],
                     change["new_text"],
+                    ai_classification=ai_classification,
                 ),
             )
         )
