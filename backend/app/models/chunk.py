@@ -14,4 +14,8 @@ class Chunk(Base):
     chunk_index = Column(Integer)
     text = Column(Text)
     token_estimate = Column(Integer)
+
+    embedding = Column(Text, nullable=True)
+    embedding_model = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
