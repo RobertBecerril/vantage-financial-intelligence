@@ -14,9 +14,10 @@ type ReportItem = {
 type ParsedReport = {
   detectedSignal: string;
   whyItMatters: string;
-  evidence: string;
-  riskLevel: string;
+  keyEvidence: string;
+  riskDirection: string;
   confidence: string;
+  uncertainty: string;
   executiveSummary: string;
   fallback: string;
 };
@@ -34,7 +35,6 @@ function extractSection(
   }
 
   const contentStart = startIndex + startMarker.length;
-
   let contentEnd = text.length;
 
   for (const nextSection of nextSectionNames) {
@@ -52,9 +52,10 @@ function parseReport(summary: string): ParsedReport {
   const sectionNames = [
     "Detected Signal",
     "Why It Matters",
-    "Evidence",
-    "Risk Level",
+    "Key Evidence",
+    "Risk Direction",
     "Confidence",
+    "Uncertainty",
     "Executive Summary",
   ];
 
@@ -66,9 +67,10 @@ function parseReport(summary: string): ParsedReport {
     return {
       detectedSignal: "",
       whyItMatters: "",
-      evidence: "",
-      riskLevel: "",
+      keyEvidence: "",
+      riskDirection: "",
       confidence: "",
+      uncertainty: "",
       executiveSummary: "",
       fallback: summary,
     };
@@ -77,27 +79,35 @@ function parseReport(summary: string): ParsedReport {
   return {
     detectedSignal: extractSection(summary, "Detected Signal", [
       "Why It Matters",
-      "Evidence",
-      "Risk Level",
+      "Key Evidence",
+      "Risk Direction",
       "Confidence",
+      "Uncertainty",
       "Executive Summary",
     ]),
     whyItMatters: extractSection(summary, "Why It Matters", [
-      "Evidence",
-      "Risk Level",
+      "Key Evidence",
+      "Risk Direction",
       "Confidence",
+      "Uncertainty",
       "Executive Summary",
     ]),
-    evidence: extractSection(summary, "Evidence", [
-      "Risk Level",
+    keyEvidence: extractSection(summary, "Key Evidence", [
+      "Risk Direction",
       "Confidence",
+      "Uncertainty",
       "Executive Summary",
     ]),
-    riskLevel: extractSection(summary, "Risk Level", [
+    riskDirection: extractSection(summary, "Risk Direction", [
       "Confidence",
+      "Uncertainty",
       "Executive Summary",
     ]),
     confidence: extractSection(summary, "Confidence", [
+      "Uncertainty",
+      "Executive Summary",
+    ]),
+    uncertainty: extractSection(summary, "Uncertainty", [
       "Executive Summary",
     ]),
     executiveSummary: extractSection(summary, "Executive Summary", []),
@@ -105,19 +115,37 @@ function parseReport(summary: string): ParsedReport {
   };
 }
 
-function riskStyles(riskLevel: string) {
-  const normalizedRisk = riskLevel.toLowerCase();
+function riskDirectionStyles(riskDirection: string) {
+  const normalizedRisk = riskDirection.toLowerCase();
 
-  if (normalizedRisk.includes("high")) {
+  if (normalizedRisk.includes("increased")) {
     return "border-red-400/20 bg-red-400/10 text-red-300";
   }
 
-  if (normalizedRisk.includes("medium")) {
+  if (normalizedRisk.includes("decreased")) {
+    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+  }
+
+  if (normalizedRisk.includes("stable")) {
+    return "border-cyan-400/20 bg-cyan-400/10 text-cyan-300";
+  }
+
+  return "border-[#26303d] bg-white/[0.03] text-zinc-400";
+}
+
+function confidenceStyles(confidence: string) {
+  const normalizedConfidence = confidence.toLowerCase();
+
+  if (normalizedConfidence.includes("high")) {
+    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+  }
+
+  if (normalizedConfidence.includes("medium")) {
     return "border-amber-400/20 bg-amber-400/10 text-amber-300";
   }
 
-  if (normalizedRisk.includes("low")) {
-    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+  if (normalizedConfidence.includes("low")) {
+    return "border-red-400/20 bg-red-400/10 text-red-300";
   }
 
   return "border-[#26303d] bg-white/[0.03] text-zinc-400";
@@ -251,7 +279,7 @@ export default function ReportFeed() {
           </h3>
 
           <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-600">
-            Generate a report using the stored document chunks for a ticker.
+            Generate a report using AI-filtered filing comparison evidence.
             Recent reports may be returned from the cache.
           </p>
         </div>
@@ -300,7 +328,7 @@ export default function ReportFeed() {
           </div>
 
           <p className="mt-2 text-xs text-zinc-600">
-            Generate a report after storing and chunking a document.
+            Generate a report after ingesting filings and creating a comparison.
           </p>
         </div>
       ) : (
@@ -348,8 +376,8 @@ export default function ReportFeed() {
 
                     <div className="mt-3 flex items-center justify-between gap-3">
                       <span className="truncate text-[11px] text-zinc-600">
-                        {parsed.riskLevel
-                          ? `${parsed.riskLevel} risk`
+                        {parsed.riskDirection
+                          ? `Risk: ${parsed.riskDirection}`
                           : report.confidence_score}
                       </span>
 
@@ -373,13 +401,13 @@ export default function ReportFeed() {
                         {selectedReport.ticker}
                       </h3>
 
-                      {parsedReport.riskLevel && (
+                      {parsedReport.riskDirection && (
                         <span
-                          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${riskStyles(
-                            parsedReport.riskLevel
+                          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${riskDirectionStyles(
+                            parsedReport.riskDirection
                           )}`}
                         >
-                          {parsedReport.riskLevel} risk
+                          {parsedReport.riskDirection}
                         </span>
                       )}
                     </div>
@@ -391,12 +419,11 @@ export default function ReportFeed() {
 
                   <div className="text-left sm:text-right">
                     <div className="text-[11px] uppercase tracking-[0.1em] text-zinc-600">
-                      Confidence
+                      Report source
                     </div>
 
                     <div className="mt-1 text-sm font-medium text-zinc-300">
-                      {parsedReport.confidence ||
-                        selectedReport.confidence_score}
+                      Comparison evidence
                     </div>
                   </div>
                 </div>
@@ -421,6 +448,42 @@ export default function ReportFeed() {
                       </section>
                     )}
 
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {parsedReport.riskDirection && (
+                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                          <div className="muted-label">Risk direction</div>
+
+                          <div
+                            className={`mt-3 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${riskDirectionStyles(
+                              parsedReport.riskDirection
+                            )}`}
+                          >
+                            {parsedReport.riskDirection}
+                          </div>
+                        </div>
+                      )}
+
+                      {parsedReport.confidence && (
+                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                          <div className="muted-label">Confidence</div>
+
+                          <p className="mt-3 text-sm leading-6 text-zinc-300">
+                            {parsedReport.confidence}
+                          </p>
+                        </div>
+                      )}
+
+                      {parsedReport.uncertainty && (
+                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                          <div className="muted-label">Uncertainty</div>
+
+                          <p className="mt-3 text-sm leading-6 text-zinc-300">
+                            {parsedReport.uncertainty}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     {parsedReport.executiveSummary && (
                       <section>
                         <div className="muted-label">Executive summary</div>
@@ -441,13 +504,13 @@ export default function ReportFeed() {
                       </section>
                     )}
 
-                    {parsedReport.evidence && (
+                    {parsedReport.keyEvidence && (
                       <section>
                         <div className="muted-label">Key evidence</div>
 
                         <div className="mt-3 rounded-lg border border-[#26303d] bg-white/[0.02] px-4 py-4">
                           <p className="whitespace-pre-line text-sm leading-7 text-zinc-400">
-                            {parsedReport.evidence}
+                            {parsedReport.keyEvidence}
                           </p>
                         </div>
                       </section>
@@ -457,7 +520,7 @@ export default function ReportFeed() {
 
                 <details className="border-t border-[#26303d] pt-5">
                   <summary className="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-cyan-300">
-                    View retrieved source chunks
+                    View report evidence
                   </summary>
 
                   <pre className="mt-4 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-[#26303d] bg-black/20 p-4 font-mono text-xs leading-6 text-zinc-500">
