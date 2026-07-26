@@ -419,11 +419,11 @@ export default function ReportFeed() {
 
                   <div className="text-left sm:text-right">
                     <div className="text-[11px] uppercase tracking-[0.1em] text-zinc-600">
-                      Report source
+                      Backed by:
                     </div>
 
                     <div className="mt-1 text-sm font-medium text-zinc-300">
-                      Comparison evidence
+                      Comparison + RAG evidence
                     </div>
                   </div>
                 </div>

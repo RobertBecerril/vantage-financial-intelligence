@@ -9,6 +9,10 @@ from app.models.chunk import Chunk
 from app.models.comparison import Comparison
 from app.models.comparison_change import ComparisonChange
 from app.models.report import Report
+from app.services.retrieval_service import (
+    build_retrieved_context,
+    retrieve_relevant_chunks,
+)
 
 load_dotenv()
 
@@ -17,6 +21,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 CACHE_DURATION_HOURS = 24
 MAX_COMPARISON_CHANGES = 12
 MAX_FALLBACK_CHUNKS = 6
+MAX_RETRIEVED_CHUNKS = 5
 
 
 def get_recent_cached_report(db: Session, ticker: str):
@@ -78,12 +83,16 @@ def truncate_text(text: str | None, max_chars: int = 900) -> str:
     return cleaned[:max_chars] + "..."
 
 
-def build_comparison_evidence(comparison: Comparison) -> str:
-    changes = sorted(
+def get_ranked_changes(comparison: Comparison) -> list[ComparisonChange]:
+    return sorted(
         comparison.changes,
         key=change_importance_score,
         reverse=True,
     )[:MAX_COMPARISON_CHANGES]
+
+
+def build_comparison_evidence(comparison: Comparison) -> str:
+    changes = get_ranked_changes(comparison)
 
     evidence_blocks = []
 
@@ -99,6 +108,24 @@ def build_comparison_evidence(comparison: Comparison) -> str:
         )
 
     return "\n\n".join(evidence_blocks)
+
+
+def build_retrieval_query_from_comparison(comparison: Comparison) -> str:
+    changes = get_ranked_changes(comparison)[:6]
+
+    query_parts = []
+
+    for change in changes:
+        query_parts.append(
+            f"{change.section_name} "
+            f"{change.change_type} "
+            f"{change.importance} "
+            f"{change.explanation} "
+            f"{truncate_text(change.old_text, max_chars=250)} "
+            f"{truncate_text(change.new_text, max_chars=250)}"
+        )
+
+    return " ".join(query_parts)
 
 
 def build_chunk_evidence(chunks):
@@ -132,6 +159,7 @@ Rules:
 - Do not provide personalized investment advice.
 - Focus on material business changes, risk direction, legal/regulatory exposure, liquidity, operations, and management discussion.
 - If confidence or uncertainty is included in the evidence, reflect it honestly.
+- Use retrieved chunks only as supporting context. The AI-filtered comparison changes are the primary evidence.
 
 Ticker: {ticker}
 
@@ -170,7 +198,7 @@ Executive Summary:
     response = client.responses.create(
         model="gpt-4.1-mini",
         input=prompt,
-        max_output_tokens=800,
+        max_output_tokens=900,
     )
 
     return response.output_text
@@ -187,9 +215,31 @@ def generate_ai_report(db: Session, ticker: str):
     latest_comparison = get_latest_comparison(db, ticker)
 
     if latest_comparison and latest_comparison.changes:
-        evidence_text = build_comparison_evidence(latest_comparison)
+        comparison_evidence = build_comparison_evidence(latest_comparison)
+
+        retrieval_query = build_retrieval_query_from_comparison(
+            latest_comparison
+        )
+
+        retrieved_chunks = retrieve_relevant_chunks(
+            db=db,
+            ticker=ticker,
+            query=retrieval_query,
+            top_k=MAX_RETRIEVED_CHUNKS,
+        )
+
+        retrieved_context = build_retrieved_context(retrieved_chunks)
+
+        evidence_text = (
+            "AI-FILTERED COMPARISON CHANGES:\n"
+            f"{comparison_evidence}\n\n"
+            "RAG RETRIEVED SUPPORTING CHUNKS:\n"
+            f"{retrieved_context if retrieved_context else '[No embedded chunks retrieved]'}"
+        )
+
         evidence_source = (
-            "AI-filtered SEC filing comparison changes, ranked by importance."
+            "AI-filtered SEC filing comparison changes plus local RAG "
+            "retrieval over embedded filing chunks."
         )
     else:
         chunks = get_context_for_ticker(db, ticker)

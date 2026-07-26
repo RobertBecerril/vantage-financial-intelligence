@@ -10,6 +10,8 @@ from app.api.filings import router as filings_router
 from app.api.reports import router as reports_router
 from app.database import Base, SessionLocal, engine
 from app.api.sec import router as sec_router
+from app.api.embeddings import router as embeddings_router
+from app.api.retrieval import router as retrieval_router
 
 # Import every SQLAlchemy model before create_all().
 # This ensures SQLAlchemy knows which database tables to create.
@@ -19,6 +21,7 @@ from app.models.comparison_change import ComparisonChange
 from app.models.document import Document
 from app.models.event import Event
 from app.models.filing import Filing
+from app.models.filing_section import FilingSection
 from app.models.report import Report
 
 from app.services.document_service import seed_documents
@@ -75,6 +78,8 @@ app.include_router(chunks_router)
 app.include_router(ai_reports_router)
 app.include_router(comparisons_router)
 app.include_router(sec_router)
+app.include_router(embeddings_router)
+app.include_router(retrieval_router)
 
 
 @app.get("/")
