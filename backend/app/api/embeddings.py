@@ -76,18 +76,29 @@ def create_embeddings_for_ticker(
             detail="The AI provider could not complete the embedding request.",
         )
 
-    except SQLAlchemyError:
+    except SQLAlchemyError as error:
         db.rollback()
+
+        print("SQLALCHEMY EMBEDDING ERROR:", repr(error))
+
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Embeddings could not be saved to the database.",
+            detail=(
+            "Embeddings could not be saved to the database. "
+            f"{type(error).__name__}: {str(error)}"
+        ),
         )
 
-    except Exception:
+    except Exception as error:
         db.rollback()
+
+        print("GENERAL EMBEDDING ERROR:", repr(error))
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred while creating embeddings.",
+            detail=(
+            "An unexpected error occurred while creating embeddings. "
+            f"{type(error).__name__}: {str(error)}"
+        ),
         )

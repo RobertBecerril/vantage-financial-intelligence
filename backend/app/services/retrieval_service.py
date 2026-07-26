@@ -1,58 +1,10 @@
-import math
-
 from sqlalchemy.orm import Session
 
 from app.models.chunk import Chunk
-from app.services.embedding_service import (
-    create_embedding,
-    deserialize_embedding,
-)
+from app.services.embedding_service import create_embedding
 
 
 DEFAULT_TOP_K = 5
-
-
-def cosine_similarity(
-    first_vector: list[float],
-    second_vector: list[float],
-) -> float:
-    if len(first_vector) != len(second_vector):
-        return 0.0
-
-    dot_product = sum(
-        first_value * second_value
-        for first_value, second_value in zip(first_vector, second_vector)
-    )
-
-    first_magnitude = math.sqrt(
-        sum(first_value * first_value for first_value in first_vector)
-    )
-
-    second_magnitude = math.sqrt(
-        sum(second_value * second_value for second_value in second_vector)
-    )
-
-    if first_magnitude == 0 or second_magnitude == 0:
-        return 0.0
-
-    return dot_product / (first_magnitude * second_magnitude)
-
-
-def get_embedded_chunks_for_ticker(
-    db: Session,
-    ticker: str,
-    limit: int = 1000,
-) -> list[Chunk]:
-    return (
-        db.query(Chunk)
-        .filter(
-            Chunk.ticker == ticker.upper(),
-            Chunk.embedding.isnot(None),
-        )
-        .order_by(Chunk.document_id.desc(), Chunk.chunk_index.asc())
-        .limit(limit)
-        .all()
-    )
 
 
 def retrieve_relevant_chunks(
@@ -63,34 +15,27 @@ def retrieve_relevant_chunks(
 ) -> list[dict]:
     query_embedding = create_embedding(query)
 
-    chunks = get_embedded_chunks_for_ticker(
-        db=db,
-        ticker=ticker,
-    )
-
-    scored_chunks = []
-
-    for chunk in chunks:
-        chunk_embedding = deserialize_embedding(chunk.embedding)
-
-        if chunk_embedding is None:
-            continue
-
-        score = cosine_similarity(query_embedding, chunk_embedding)
-
-        scored_chunks.append(
-            {
-                "chunk": chunk,
-                "score": score,
-            }
+    results = (
+        db.query(
+            Chunk,
+            Chunk.embedding.cosine_distance(query_embedding).label("distance"),
         )
-
-    scored_chunks.sort(
-        key=lambda item: item["score"],
-        reverse=True,
+        .filter(
+            Chunk.ticker == ticker.upper(),
+            Chunk.embedding.isnot(None),
+        )
+        .order_by(Chunk.embedding.cosine_distance(query_embedding))
+        .limit(top_k)
+        .all()
     )
 
-    return scored_chunks[:top_k]
+    return [
+        {
+            "chunk": chunk,
+            "score": 1 - float(distance),
+        }
+        for chunk, distance in results
+    ]
 
 
 def build_retrieved_context(retrieved_chunks: list[dict]) -> str:

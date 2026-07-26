@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 
 from app.database import Base
@@ -15,7 +16,7 @@ class Chunk(Base):
     text = Column(Text)
     token_estimate = Column(Integer)
 
-    embedding = Column(Text, nullable=True)
+    embedding = Column(Vector(1536), nullable=True)
     embedding_model = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)

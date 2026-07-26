@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Iterable
 
@@ -36,25 +35,6 @@ def create_embeddings_batch(texts: Iterable[str]) -> list[list[float]]:
     )
 
     return [item.embedding for item in response.data]
-
-
-def serialize_embedding(embedding: list[float]) -> str:
-    return json.dumps(embedding)
-
-
-def deserialize_embedding(embedding_text: str | None) -> list[float] | None:
-    if not embedding_text:
-        return None
-
-    try:
-        parsed = json.loads(embedding_text)
-    except json.JSONDecodeError:
-        return None
-
-    if not isinstance(parsed, list):
-        return None
-
-    return [float(value) for value in parsed]
 
 
 def get_chunks_missing_embeddings(
@@ -100,7 +80,7 @@ def embed_chunks(
         embeddings = create_embeddings_batch(batch_texts)
 
         for chunk, embedding in zip(batch, embeddings):
-            chunk.embedding = serialize_embedding(embedding)
+            chunk.embedding = embedding
             chunk.embedding_model = EMBEDDING_MODEL
             embedded_count += 1
 
