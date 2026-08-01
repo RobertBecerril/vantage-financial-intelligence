@@ -12,6 +12,7 @@ from app.database import Base, SessionLocal, engine
 from app.api.sec import router as sec_router
 from app.api.embeddings import router as embeddings_router
 from app.api.retrieval import router as retrieval_router
+from app.api.pipeline import router as pipeline_router
 
 # Import every SQLAlchemy model before create_all().
 # This ensures SQLAlchemy knows which database tables to create.
@@ -80,6 +81,7 @@ app.include_router(comparisons_router)
 app.include_router(sec_router)
 app.include_router(embeddings_router)
 app.include_router(retrieval_router)
+app.include_router(pipeline_router)
 
 
 @app.get("/")
