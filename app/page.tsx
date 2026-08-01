@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
+
 import ApiStatus from "./ApiStatus";
 import ComparisonFeed from "./ComparisonFeed";
 import DocumentFeed from "./DocumentFeed";
 import EventFeed from "./EventFeed";
 import FilingFeed from "./FilingFeed";
+import PipelinePanel from "./PipelinePanel";
 import ReportFeed from "./ReportFeed";
 import SecIngestionPanel from "./SecIngestionPanel";
 
 const navigation = [
   { label: "Overview", href: "#overview" },
+  { label: "Analysis", href: "#analysis" },
   { label: "Signals", href: "#signals" },
   { label: "Filings", href: "#filings" },
   { label: "SEC Ingestion", href: "#sec-ingestion" },
@@ -22,24 +26,28 @@ const navigation = [
 const workflow = [
   {
     name: "Ingest",
-    description: "Store source documents and metadata.",
+    description: "Fetch recent SEC filings and store source documents.",
   },
   {
     name: "Chunk",
-    description: "Split long documents into smaller evidence units.",
+    description: "Split filing text into overlapping retrieval units.",
   },
   {
-    name: "Compare",
-    description: "Detect added, removed, and modified filing language.",
+    name: "Embed",
+    description: "Store semantic vectors in PostgreSQL with pgvector.",
   },
   {
     name: "Analyze",
-    description: "Generate grounded intelligence from retrieved context.",
+    description: "Compare filings and generate evidence-grounded reports.",
   },
 ];
 
 export default function Home() {
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  function refreshWorkspace() {
+    setRefreshKey((currentKey) => currentKey + 1);
+  }
 
   return (
     <main className="app-shell">
@@ -101,7 +109,8 @@ export default function Home() {
                 </div>
 
                 <div className="mt-0.5 text-xs text-zinc-600">
-                  Document analysis, filing comparison, and report generation
+                  SEC filing ingestion, pgvector retrieval, comparison, and AI
+                  report generation
                 </div>
               </div>
 
@@ -127,9 +136,9 @@ export default function Home() {
                     </h1>
 
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
-                      Review company signals, filings, filing changes,
-                      financial documents, and generated intelligence reports
-                      from one workspace.
+                      Run an end-to-end SEC filing analysis workflow, compare
+                      filing changes, retrieve supporting evidence, and generate
+                      structured intelligence reports from one workspace.
                     </p>
                   </div>
 
@@ -160,6 +169,21 @@ export default function Home() {
               </div>
             </section>
 
+            <section id="analysis" className="panel">
+              <div className="panel-header">
+                <div className="section-title">One-click analysis</div>
+
+                <div className="section-description">
+                  Run the full Vantage workflow from ticker to AI-generated
+                  report.
+                </div>
+              </div>
+
+              <div className="panel-body">
+                <PipelinePanel onPipelineComplete={refreshWorkspace} />
+              </div>
+            </section>
+
             <section id="signals" className="panel">
               <div className="panel-header">
                 <div className="section-title">Recent signals</div>
@@ -170,11 +194,9 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <EventFeed refreshKey={0} />
+                <EventFeed refreshKey={refreshKey} />
               </div>
             </section>
-
-      
 
             <section id="filings" className="panel">
               <div className="panel-header">
@@ -186,7 +208,7 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <FilingFeed />
+                <FilingFeed key={refreshKey} />
               </div>
             </section>
 
@@ -195,8 +217,8 @@ export default function Home() {
                 <div className="section-title">SEC ingestion</div>
 
                 <div className="section-description">
-                Fetch recent SEC 10-Q or 10-K filings and store them as Vantage
-                documents.
+                  Fetch recent SEC 10-Q or 10-K filings and store them as
+                  Vantage documents.
                 </div>
               </div>
 
@@ -216,7 +238,7 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <ComparisonFeed />
+                <ComparisonFeed key={refreshKey} />
               </div>
             </section>
 
@@ -231,7 +253,7 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <ReportFeed />
+                <ReportFeed key={refreshKey} />
               </div>
             </section>
 
@@ -245,7 +267,7 @@ export default function Home() {
               </div>
 
               <div className="panel-body">
-                <DocumentFeed />
+                <DocumentFeed key={refreshKey} />
               </div>
             </section>
 
@@ -254,7 +276,7 @@ export default function Home() {
                 <div className="section-title">System architecture</div>
 
                 <div className="section-description">
-                  Current V1.5 processing flow.
+                  Current Vantage processing flow.
                 </div>
               </div>
 
@@ -266,8 +288,8 @@ export default function Home() {
                     <div className="mt-2 text-sm text-zinc-300">Next.js</div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Dashboard, forms, reports, filing comparisons, and
-                      document controls.
+                      Dashboard, forms, pipeline controls, reports, filing
+                      comparisons, and document views.
                     </div>
                   </div>
 
@@ -277,8 +299,8 @@ export default function Home() {
                     <div className="mt-2 text-sm text-zinc-300">FastAPI</div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      REST routes, validation, comparison services, and AI
-                      requests.
+                      REST routes, validation, SEC ingestion, comparison
+                      services, and AI request orchestration.
                     </div>
                   </div>
 
@@ -286,12 +308,12 @@ export default function Home() {
                     <div className="muted-label">Persistence</div>
 
                     <div className="mt-2 text-sm text-zinc-300">
-                      SQLite + SQLAlchemy
+                      PostgreSQL + pgvector
                     </div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Documents, chunks, filings, events, reports, and detected
-                      filing changes.
+                      Documents, chunks, embeddings, filings, events, reports,
+                      comparisons, and detected filing changes.
                     </div>
                   </div>
 
@@ -299,12 +321,13 @@ export default function Home() {
                     <div className="muted-label">Analysis</div>
 
                     <div className="mt-2 text-sm text-zinc-300">
-                      Python difflib + OpenAI
+                      RAG + AI materiality
                     </div>
 
                     <div className="mt-1 text-xs leading-5 text-zinc-600">
-                      Deterministic filing comparison and evidence-grounded
-                      report generation.
+                      Vector retrieval, section-level filing comparison,
+                      materiality filtering, uncertainty scoring, and
+                      evidence-grounded report generation.
                     </div>
                   </div>
                 </div>
@@ -312,7 +335,7 @@ export default function Home() {
             </section>
 
             <footer className="border-t border-[#232a33] py-5 text-xs text-zinc-700">
-              Vantage V1.5 · Local financial intelligence workspace
+              Vantage V1.6 · Local financial intelligence workspace
             </footer>
           </div>
         </div>

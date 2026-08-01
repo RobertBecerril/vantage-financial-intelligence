@@ -219,8 +219,13 @@ def build_filing_url(
         primary_document=primary_document,
     )
 
-
 def clean_filing_html(html: str) -> str:
+    # Prevent extremely large SEC filings from freezing local parsing
+    max_html_chars = 2_000_000
+
+    if len(html) > max_html_chars:
+        html = html[:max_html_chars]
+
     soup = BeautifulSoup(html, "lxml")
 
     for element in soup(
