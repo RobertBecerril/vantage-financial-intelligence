@@ -119,45 +119,52 @@ function riskDirectionStyles(riskDirection: string) {
   const normalizedRisk = riskDirection.toLowerCase();
 
   if (normalizedRisk.includes("increased")) {
-    return "border-red-400/20 bg-red-400/10 text-red-300";
+    return "border-red-400/25 bg-red-400/[0.08] text-red-200";
   }
 
   if (normalizedRisk.includes("decreased")) {
-    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+    return "border-[#8ee68b]/25 bg-[#8ee68b]/10 text-[#a8f5a5]";
   }
 
-  if (normalizedRisk.includes("stable")) {
-    return "border-cyan-400/20 bg-cyan-400/10 text-cyan-300";
+  if (
+    normalizedRisk.includes("unclear") ||
+    normalizedRisk.includes("uncertain")
+  ) {
+    return "border-amber-300/25 bg-amber-300/[0.08] text-amber-200";
   }
 
-  return "border-[#26303d] bg-white/[0.03] text-zinc-400";
+  return "border-white/10 bg-white/[0.035] text-zinc-300";
 }
 
 function confidenceStyles(confidence: string) {
   const normalizedConfidence = confidence.toLowerCase();
 
   if (normalizedConfidence.includes("high")) {
-    return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+    return "border-[#8ee68b]/25 bg-[#8ee68b]/10 text-[#a8f5a5]";
   }
 
   if (normalizedConfidence.includes("medium")) {
-    return "border-amber-400/20 bg-amber-400/10 text-amber-300";
+    return "border-amber-300/25 bg-amber-300/[0.08] text-amber-200";
   }
 
   if (normalizedConfidence.includes("low")) {
-    return "border-red-400/20 bg-red-400/10 text-red-300";
+    return "border-red-400/25 bg-red-400/[0.08] text-red-200";
   }
 
-  return "border-[#26303d] bg-white/[0.03] text-zinc-400";
+  return "border-white/10 bg-white/[0.035] text-zinc-300";
+}
+
+function splitEvidence(evidence: string) {
+  return evidence
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 export default function ReportFeed() {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
-  const [ticker, setTicker] = useState("");
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   async function fetchReports(selectNewest = false) {
@@ -204,53 +211,6 @@ export default function ReportFeed() {
     fetchReports();
   }, []);
 
-  async function generateReport(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const cleanedTicker = ticker.trim().toUpperCase();
-
-    if (!cleanedTicker) {
-      setError("Enter a ticker symbol.");
-      return;
-    }
-
-    setIsGenerating(true);
-    setMessage(`Analyzing ${cleanedTicker}...`);
-    setError("");
-
-    try {
-      const response = await fetch(
-        `http://localhost:8000/api/ai/reports/${cleanedTicker}`,
-        {
-          method: "POST",
-        }
-      );
-
-      const responseData = await response.json().catch(() => null);
-
-      if (!response.ok) {
-        throw new Error(
-          responseData?.detail || "Unable to generate the report."
-        );
-      }
-
-      setTicker("");
-      setMessage(`${cleanedTicker} report is ready.`);
-
-      await fetchReports(true);
-    } catch (caughtError) {
-      if (caughtError instanceof Error) {
-        setError(caughtError.message);
-      } else {
-        setError("An unexpected error occurred.");
-      }
-
-      setMessage("");
-    } finally {
-      setIsGenerating(false);
-    }
-  }
-
   const selectedReport = useMemo(() => {
     return (
       reports.find((report) => report.id === selectedReportId) ??
@@ -267,84 +227,50 @@ export default function ReportFeed() {
     return parseReport(selectedReport.summary);
   }, [selectedReport]);
 
+  const evidenceLines = useMemo(() => {
+    if (!parsedReport?.keyEvidence) {
+      return [];
+    }
+
+    return splitEvidence(parsedReport.keyEvidence);
+  }, [parsedReport]);
+
   return (
     <div className="space-y-6">
-      <form
-        onSubmit={generateReport}
-        className="flex flex-col gap-4 border-b border-[#26303d] pb-6 lg:flex-row lg:items-end lg:justify-between"
-      >
-        <div>
-          <h3 className="text-base font-semibold text-white">
-            Generate intelligence
-          </h3>
-
-          <p className="mt-1 max-w-xl text-xs leading-5 text-zinc-600">
-            Generate a report using AI-filtered filing comparison evidence.
-            Recent reports may be returned from the cache.
-          </p>
-        </div>
-
-        <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-          <input
-            value={ticker}
-            onChange={(event) => setTicker(event.target.value)}
-            placeholder="AAPL"
-            maxLength={10}
-            disabled={isGenerating}
-            aria-label="Ticker symbol"
-            className="field h-10 uppercase sm:w-40"
-          />
-
-          <button
-            type="submit"
-            disabled={isGenerating}
-            className="primary-button h-10 whitespace-nowrap"
-          >
-            {isGenerating ? "Generating..." : "Generate report"}
-          </button>
-        </div>
-      </form>
-
-      {(message || error) && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm ${
-            error
-              ? "border-red-400/20 bg-red-400/5 text-red-300"
-              : "border-emerald-400/20 bg-emerald-400/5 text-emerald-300"
-          }`}
-        >
-          {error || message}
+      {error && (
+        <div className="rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+          {error}
         </div>
       )}
 
       {isLoading ? (
-        <div className="rounded-lg border border-[#26303d] bg-[#090d13] px-5 py-10 text-sm text-zinc-500">
+        <div className="rounded-2xl border border-white/10 bg-black/20 px-5 py-12 text-sm text-zinc-500">
           Loading reports...
         </div>
       ) : reports.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-[#26303d] px-5 py-12 text-center">
+        <div className="rounded-2xl border border-dashed border-white/10 px-5 py-14 text-center">
           <div className="text-sm font-medium text-zinc-300">
             No reports available
           </div>
 
           <p className="mt-2 text-xs text-zinc-600">
-            Generate a report after ingesting filings and creating a comparison.
+            Run the one-click analysis workflow to generate the first report.
           </p>
         </div>
       ) : (
-        <div className="grid min-h-[560px] overflow-hidden rounded-xl border border-[#26303d] bg-[#090d13] lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="border-b border-[#26303d] lg:border-b-0 lg:border-r">
-            <div className="border-b border-[#26303d] px-4 py-4">
-              <div className="text-xs font-semibold text-zinc-300">
+        <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-[#070906] lg:grid-cols-[320px_minmax(0,1fr)]">
+          <aside className="border-b border-white/10 bg-black/20 lg:border-b-0 lg:border-r">
+            <div className="border-b border-white/10 px-5 py-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600">
                 Report history
               </div>
 
-              <div className="mt-1 text-[11px] text-zinc-600">
+              <div className="mt-2 text-sm text-zinc-300">
                 {reports.length} saved report{reports.length === 1 ? "" : "s"}
               </div>
             </div>
 
-            <div className="max-h-[560px] overflow-y-auto">
+            <div className="max-h-[760px] overflow-y-auto">
               {reports.map((report) => {
                 const isSelected = report.id === selectedReport?.id;
                 const parsed = parseReport(report.summary);
@@ -354,14 +280,14 @@ export default function ReportFeed() {
                     key={report.id}
                     type="button"
                     onClick={() => setSelectedReportId(report.id)}
-                    className={`block w-full border-b border-[#26303d] px-4 py-4 text-left transition last:border-b-0 ${
+                    className={`block w-full border-b border-white/10 px-5 py-5 text-left transition last:border-b-0 ${
                       isSelected
-                        ? "bg-cyan-400/[0.07]"
+                        ? "bg-[#8ee68b]/[0.07]"
                         : "hover:bg-white/[0.025]"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4">
-                      <span className="text-base font-semibold text-white">
+                      <span className="text-lg font-semibold text-white">
                         {report.ticker}
                       </span>
 
@@ -370,11 +296,11 @@ export default function ReportFeed() {
                       </span>
                     </div>
 
-                    <div className="mt-2 truncate text-xs text-zinc-400">
+                    <div className="mt-2 truncate text-xs text-zinc-500">
                       {report.title}
                     </div>
 
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="mt-4 flex items-center justify-between gap-3">
                       <span className="truncate text-[11px] text-zinc-600">
                         {parsed.riskDirection
                           ? `Risk: ${parsed.riskDirection}`
@@ -382,7 +308,7 @@ export default function ReportFeed() {
                       </span>
 
                       {isSelected && (
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-300" />
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8ee68b]" />
                       )}
                     </div>
                   </button>
@@ -392,18 +318,18 @@ export default function ReportFeed() {
           </aside>
 
           {selectedReport && parsedReport && (
-            <article className="min-w-0">
-              <header className="border-b border-[#26303d] px-6 py-5">
-                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <article className="min-w-0 bg-[#070906]">
+              <header className="border-b border-white/10 px-6 py-6 md:px-8">
+                <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-start">
                   <div>
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-2xl font-semibold text-white">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-3xl font-semibold tracking-tight text-white">
                         {selectedReport.ticker}
                       </h3>
 
                       {parsedReport.riskDirection && (
                         <span
-                          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${riskDirectionStyles(
+                          className={`rounded-full border px-3 py-1 text-xs font-medium ${riskDirectionStyles(
                             parsedReport.riskDirection
                           )}`}
                         >
@@ -417,9 +343,9 @@ export default function ReportFeed() {
                     </p>
                   </div>
 
-                  <div className="text-left sm:text-right">
-                    <div className="text-[11px] uppercase tracking-[0.1em] text-zinc-600">
-                      Backed by:
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3 text-left xl:text-right">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+                      Backed by
                     </div>
 
                     <div className="mt-1 text-sm font-medium text-zinc-300">
@@ -429,32 +355,32 @@ export default function ReportFeed() {
                 </div>
               </header>
 
-              <div className="space-y-7 px-6 py-6">
+              <div className="space-y-8 px-6 py-7 md:px-8">
                 {parsedReport.fallback ? (
-                  <section>
-                    <p className="text-sm leading-7 text-zinc-300">
+                  <section className="max-w-5xl">
+                    <p className="text-base leading-8 text-zinc-300">
                       {parsedReport.fallback}
                     </p>
                   </section>
                 ) : (
                   <>
                     {parsedReport.detectedSignal && (
-                      <section>
+                      <section className="max-w-5xl">
                         <div className="muted-label">Detected signal</div>
 
-                        <p className="mt-3 text-base leading-7 text-zinc-200">
+                        <p className="mt-3 text-lg leading-8 text-zinc-100">
                           {parsedReport.detectedSignal}
                         </p>
                       </section>
                     )}
 
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 xl:grid-cols-3">
                       {parsedReport.riskDirection && (
-                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
                           <div className="muted-label">Risk direction</div>
 
                           <div
-                            className={`mt-3 inline-flex rounded-md border px-2.5 py-1 text-xs font-medium ${riskDirectionStyles(
+                            className={`mt-4 inline-flex rounded-xl border px-3 py-2 text-xs font-medium leading-5 ${riskDirectionStyles(
                               parsedReport.riskDirection
                             )}`}
                           >
@@ -464,20 +390,24 @@ export default function ReportFeed() {
                       )}
 
                       {parsedReport.confidence && (
-                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
                           <div className="muted-label">Confidence</div>
 
-                          <p className="mt-3 text-sm leading-6 text-zinc-300">
+                          <div
+                            className={`mt-4 rounded-xl border px-3 py-2 text-sm leading-6 ${confidenceStyles(
+                              parsedReport.confidence
+                            )}`}
+                          >
                             {parsedReport.confidence}
-                          </p>
+                          </div>
                         </div>
                       )}
 
                       {parsedReport.uncertainty && (
-                        <div className="rounded-lg border border-[#26303d] bg-white/[0.02] p-4">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
                           <div className="muted-label">Uncertainty</div>
 
-                          <p className="mt-3 text-sm leading-6 text-zinc-300">
+                          <p className="mt-4 text-sm leading-7 text-zinc-300">
                             {parsedReport.uncertainty}
                           </p>
                         </div>
@@ -485,45 +415,59 @@ export default function ReportFeed() {
                     </div>
 
                     {parsedReport.executiveSummary && (
-                      <section>
+                      <section className="max-w-5xl">
                         <div className="muted-label">Executive summary</div>
 
-                        <p className="mt-3 text-sm leading-7 text-zinc-300">
+                        <p className="mt-3 text-base leading-8 text-zinc-300">
                           {parsedReport.executiveSummary}
                         </p>
                       </section>
                     )}
 
                     {parsedReport.whyItMatters && (
-                      <section>
+                      <section className="max-w-5xl">
                         <div className="muted-label">Why it matters</div>
 
-                        <p className="mt-3 text-sm leading-7 text-zinc-400">
+                        <p className="mt-3 text-base leading-8 text-zinc-400">
                           {parsedReport.whyItMatters}
                         </p>
                       </section>
                     )}
 
                     {parsedReport.keyEvidence && (
-                      <section>
+                      <section className="max-w-5xl">
                         <div className="muted-label">Key evidence</div>
 
-                        <div className="mt-3 rounded-lg border border-[#26303d] bg-white/[0.02] px-4 py-4">
-                          <p className="whitespace-pre-line text-sm leading-7 text-zinc-400">
-                            {parsedReport.keyEvidence}
-                          </p>
+                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-5">
+                          {evidenceLines.length > 1 ? (
+                            <div className="space-y-3">
+                              {evidenceLines.map((line, index) => (
+                                <div
+                                  key={`${line}-${index}`}
+                                  className="flex gap-3 text-sm leading-7 text-zinc-400"
+                                >
+                                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#8ee68b]" />
+                                  <span>{line.replace(/^[-•]\s*/, "")}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="whitespace-pre-line text-sm leading-7 text-zinc-400">
+                              {parsedReport.keyEvidence}
+                            </p>
+                          )}
                         </div>
                       </section>
                     )}
                   </>
                 )}
 
-                <details className="border-t border-[#26303d] pt-5">
-                  <summary className="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-cyan-300">
-                    View report evidence
+                <details className="border-t border-white/10 pt-5">
+                  <summary className="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-[#a8f5a5]">
+                    View raw report evidence
                   </summary>
 
-                  <pre className="mt-4 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-lg border border-[#26303d] bg-black/20 p-4 font-mono text-xs leading-6 text-zinc-500">
+                  <pre className="mt-4 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-black/30 p-5 font-mono text-xs leading-6 text-zinc-500">
                     {selectedReport.evidence}
                   </pre>
                 </details>
