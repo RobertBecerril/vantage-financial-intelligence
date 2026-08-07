@@ -1,48 +1,168 @@
+<p align="center">
+  <img src="public/vantage-full-logo.png" alt="Vantage logo" width="260" />
+</p>
+
 # Vantage
 
-Vantage is a financial intelligence platform for analyzing SEC filings. It ingests recent 10-Q and 10-K filings, stores filing text, compares changes between reporting periods, and generates evidence-backed reports.
+Vantage is a financial intelligence platform for analyzing SEC filings.
 
-The goal is to make SEC filings easier to review by combining document processing, semantic search, filing comparison, and structured report generation.
+It takes a company ticker, pulls recent 10-Q or 10-K filings, processes the filing text, compares changes across reporting periods, and generates an evidence-backed report that highlights what changed and why it may matter.
 
-## Features
+The project is built around a simple idea:
 
-- SEC filing ingestion for recent 10-Q and 10-K reports
-- Document chunking for long filing text
-- PostgreSQL storage with pgvector semantic retrieval
-- Filing comparison across reporting periods
-- AI-assisted materiality classification
-- Evidence-backed report generation
-- One-click analysis workflow from ticker to report
+> See what changed. Know what matters.
 
-## Tech Stack
+## What It Does
 
-- Next.js
-- FastAPI
-- PostgreSQL
-- pgvector
-- SQLAlchemy
-- OpenAI API
-- Docker
-
-## How It Works
+Vantage turns a manual SEC filing review process into a structured workflow:
 
 ```text
 Ticker
 → SEC filing ingestion
 → document storage
-→ chunking
+→ text chunking
 → embedding generation
 → pgvector retrieval
 → filing comparison
-→ materiality classification
+→ materiality analysis
 → evidence-backed report
+```
+
+The app is currently focused on local analysis and portfolio demonstration. Deployment preparation is in progress!
+
+## Features
+
+- One-click company analysis from ticker to report
+- SEC 10-Q and 10-K filing ingestion
+- Document chunking with overlapping text windows
+- PostgreSQL storage with pgvector semantic search
+- 1,536-dimensional OpenAI embeddings
+- Filing comparison across reporting periods
+- AI-assisted materiality classification
+- Risk direction, confidence, and uncertainty scoring
+- Evidence-backed report generation
+- Clean dashboard for reviewing generated reports
+
+## Tech Stack
+
+**Frontend**
+- Next.js
+- TypeScript
+- Tailwind CSS
+
+**Backend**
+- FastAPI
+- Python
+- SQLAlchemy
+
+**Database**
+- PostgreSQL
+- pgvector
+- Docker
+
+**AI / Retrieval**
+- OpenAI API
+- RAG pipeline
+- Vector similarity search
+
+## Why I Built This
+
+SEC filings contain useful information, but reviewing them manually can be slow and repetitive. The goal of Vantage is to make filing changes easier to find, compare, and understand.
+
+Instead of using AI as a simple chatbot, Vantage uses a more structured pipeline:
+
+1. Store and process the filing text
+2. Break filings into searchable chunks
+3. Embed those chunks into a vector database
+4. Compare filing sections across periods
+5. Classify material changes
+6. Generate a report grounded in retrieved evidence
+
+This makes the output easier to inspect and less dependent on a single prompt.
+
+## Current Workflow
+
+The main workflow is handled through a one-click pipeline:
+
+```text
+Enter ticker
+→ Run Analysis
+→ Ingest recent filings
+→ Generate chunks and embeddings
+→ Compare filings
+→ Generate report
+→ Review evidence
+```
+
+Main endpoint:
+
+```text
+POST /api/pipeline/{ticker}
+```
+
+Example:
+
+```text
+POST /api/pipeline/AAPL?form_type=10-Q&limit=2
+```
+
+## Main API Routes
+
+```text
+POST /api/pipeline/{ticker}
+POST /api/sec/ingest/{ticker}
+POST /api/embeddings/{ticker}
+POST /api/comparisons/{ticker}
+POST /api/ai/reports/{ticker}
+
+GET  /api/reports
+GET  /api/documents
+GET  /api/status
 ```
 
 ## Local Setup
 
-### Backend
+### 1. Clone the repo
 
 ```bash
+git clone https://github.com/RobertBecerril/vantage-financial-intelligence.git
+cd vantage-financial-intelligence
+```
+
+### 2. Start PostgreSQL with pgvector
+
+```powershell
+docker run --name vantage-postgres `
+  -e POSTGRES_USER=postgres `
+  -e POSTGRES_PASSWORD=vantagepass `
+  -e POSTGRES_DB=vantage `
+  -p 5433:5432 `
+  -d pgvector/pgvector:pg18
+```
+
+Then enable pgvector:
+
+```powershell
+docker exec -it vantage-postgres psql -U postgres -d vantage
+```
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+\q
+```
+
+### 3. Configure environment variables
+
+Create a `.env` file inside the `backend` folder:
+
+```env
+DATABASE_URL=postgresql+psycopg2://postgres:vantagepass@localhost:5433/vantage
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+### 4. Start the backend
+
+```powershell
 cd backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -62,9 +182,11 @@ Swagger docs:
 http://localhost:8000/docs
 ```
 
-### Frontend
+### 5. Start the frontend
 
-```bash
+In a second terminal:
+
+```powershell
 npm install
 npm run dev
 ```
@@ -75,57 +197,62 @@ Frontend:
 http://localhost:3000
 ```
 
-## PostgreSQL + pgvector
+## Database Reset for Local Development
 
-Vantage uses PostgreSQL with pgvector for semantic search.
-
-Example Docker setup for Windows PowerShell:
+To clear local demo data:
 
 ```powershell
-docker run --name vantage-postgres `
-  -e POSTGRES_USER=postgres `
-  -e POSTGRES_PASSWORD=vantagepass `
-  -e POSTGRES_DB=vantage `
-  -p 5433:5432 `
-  -d pgvector/pgvector:pg18
+docker exec -it vantage-postgres psql -U postgres -d vantage
 ```
-
-Inside the database:
 
 ```sql
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
 CREATE EXTENSION IF NOT EXISTS vector;
+\q
 ```
 
-Example `.env`:
+Then restart the backend.
 
-```env
-DATABASE_URL=postgresql+psycopg2://postgres:vantagepass@localhost:5433/vantage
-OPENAI_API_KEY=your_api_key_here
-```
+## Deployment Status
 
-## Main API Routes
+Vantage currently runs locally with a Next.js frontend, FastAPI backend, PostgreSQL database, and pgvector extension.
+
+Deployment preparation is in progress. The next deployment steps are:
+
+- production environment configuration
+- managed PostgreSQL setup with pgvector
+- backend hosting
+- frontend hosting
+- production API routing
+- environment variable cleanup
+
+## Roadmap
+
+Near-term improvements:
+
+- faster SEC filing parsing
+- cleaner loading and progress states
+- latest-report-only display option
+- duplicate report prevention
+- production deployment (still digging more into secure deployment)
+- many many more features regarding UX..
+
+## Project Status
+
+Vantage is functional as a local end-to-end prototype.
+
+The core pipeline is working:
 
 ```text
-POST /api/pipeline/{ticker}
-POST /api/sec/ingest/{ticker}
-POST /api/embeddings/{ticker}
-POST /api/comparisons/{ticker}
-POST /api/ai/reports/{ticker}
-GET  /api/reports
-GET  /api/documents
+SEC filings
+→ chunks
+→ embeddings
+→ vector retrieval
+→ filing comparison
+→ materiality classification
+→ evidence-backed report
 ```
 
-## Current Status
-
-Vantage currently supports an end-to-end local workflow:
-
-```text
-Enter ticker
-→ run analysis
-→ ingest filings
-→ generate chunks and embeddings
-→ compare filings
-→ generate report
-```
-
-Next improvements include faster SEC parsing, clearer progress states, and a cleaner production-style interface.
+I have many more ideas for vantage and im excited for the future of this project! 
+any questions feel free to contact me: robertbecerril@vt.edu 
