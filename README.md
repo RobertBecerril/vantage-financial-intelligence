@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/vantage-full-logo.png" alt="Vantage logo" width="260" />
+  <img src="./public/vantage-full-logo.png" alt="Vantage logo" width="320" />
 </p>
 
 # Vantage
