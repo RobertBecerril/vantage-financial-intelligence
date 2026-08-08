@@ -32,23 +32,20 @@ The app is currently focused on local analysis and portfolio demonstration. Depl
 
 ## Screenshots
 
-### Dashboard overview
-![Dashboard overview](docs/screenshots/dashboard-overview.png)
+### Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
 
-### One-click analysis workflow
-![Pipeline workflow](docs/screenshots/pipeline-workflow.png)
+### Report history
+![Report history](docs/screenshots/report-history.png)
 
-### Evidence-backed intelligence report
-![Intelligence report](docs/screenshots/intelligence-report.png)
+### Report detail
+![Report detail](docs/screenshots/report-detail.png)
 
-### Filing signal analysis
-![Filing signals](docs/screenshots/signals-filings.png)
+### Evidence view
+![Evidence view](docs/screenshots/evidence-view.png)
 
 ### Backend API routes
 ![Backend API routes](docs/screenshots/backend-api-routes.png)
-
-### Backend pipeline execution
-![Backend pipeline execution](docs/screenshots/backend-pipeline-runs.png)
 
 ## Features
 
