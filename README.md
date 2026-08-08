@@ -47,6 +47,10 @@ The app is currently focused on local analysis and portfolio demonstration. Depl
 ### Backend API routes (swagger)
 ![Backend API routes](docs/screenshots/backend-api-routes.png)
 
+## Architecture
+
+![Vantage architecture](docs/screenshots/vantage-architecture.png)
+
 ## Features
 
 - One-click company analysis from ticker to report
