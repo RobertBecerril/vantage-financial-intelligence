@@ -30,6 +30,26 @@ Ticker
 
 The app is currently focused on local analysis and portfolio demonstration. Deployment preparation is in progress!
 
+## Screenshots
+
+### Dashboard overview
+![Dashboard overview](docs/screenshots/dashboard-overview.png)
+
+### One-click analysis workflow
+![Pipeline workflow](docs/screenshots/pipeline-workflow.png)
+
+### Evidence-backed intelligence report
+![Intelligence report](docs/screenshots/intelligence-report.png)
+
+### Filing signal analysis
+![Filing signals](docs/screenshots/signals-filings.png)
+
+### Backend API routes
+![Backend API routes](docs/screenshots/backend-api-routes.png)
+
+### Backend pipeline execution
+![Backend pipeline execution](docs/screenshots/backend-pipeline-runs.png)
+
 ## Features
 
 - One-click company analysis from ticker to report
