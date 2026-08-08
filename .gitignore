@@ -49,3 +49,5 @@ yarn-error.log*
 Thumbs.db
 
 desktop.ini
+
+next-env.d.ts
