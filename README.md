@@ -44,7 +44,7 @@ The app is currently focused on local analysis and portfolio demonstration. Depl
 ### Evidence view
 ![Evidence view](docs/screenshots/evidence-view.png)
 
-### Backend API routes
+### Backend API routes (swagger)
 ![Backend API routes](docs/screenshots/backend-api-routes.png)
 
 ## Features

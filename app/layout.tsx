@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import {
-  Cormorant_Garamond,
+  Bricolage_Grotesque,
   Inter,
   Space_Grotesk,
 } from "next/font/google";
@@ -18,17 +18,16 @@ const spaceGrotesk = Space_Grotesk({
   display: "swap",
 });
 
-const cormorantGaramond = Cormorant_Garamond({
+const bricolageGrotesque = Bricolage_Grotesque({
   subsets: ["latin"],
   variable: "--font-vantage",
   display: "swap",
-  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
   title: "Vantage | Financial Intelligence",
   description:
-    "A financial document intelligence platform for analyzing filings, signals, and supporting evidence.",
+    "A financial document intelligence platform for analyzing filings, changes, and supporting evidence.",
 };
 
 export default function RootLayout({
@@ -39,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} ${cormorantGaramond.variable}`}
+        className={`${inter.variable} ${spaceGrotesk.variable} ${bricolageGrotesque.variable}`}
       >
         {children}
       </body>

@@ -98,12 +98,12 @@ export default function FilingFeed() {
               {filing.ticker}
             </div>
 
-            <div className="text-xs text-cyan-300 lg:hidden">
+            <div className="text-xs text-zinc-500 lg:hidden">
               {filing.form_type}
             </div>
           </div>
 
-          <div className="hidden text-xs font-medium text-cyan-300 lg:block">
+          <div className="hidden text-xs font-medium text-zinc-500 lg:block">
             {filing.form_type}
           </div>
 
@@ -129,7 +129,7 @@ export default function FilingFeed() {
               href={filing.source_url}
               target="_blank"
               rel="noreferrer"
-              className="text-xs font-medium text-zinc-500 transition hover:text-cyan-300"
+              className="text-xs font-medium text-zinc-500 transition hover:text-[#a8f5a5]"
             >
               Open source
             </a>

@@ -107,40 +107,88 @@ function parseReport(summary: string): ParsedReport {
       "Uncertainty",
       "Executive Summary",
     ]),
-    uncertainty: extractSection(summary, "Uncertainty", [
-      "Executive Summary",
-    ]),
+    uncertainty: extractSection(summary, "Uncertainty", ["Executive Summary"]),
     executiveSummary: extractSection(summary, "Executive Summary", []),
     fallback: "",
   };
 }
 
-function riskDirectionStyles(riskDirection: string) {
+function getRiskTone(riskDirection: string) {
   const normalizedRisk = riskDirection.toLowerCase();
 
-  if (normalizedRisk.includes("increased")) {
+  const hasIncreased = normalizedRisk.includes("increased");
+  const hasDecreased = normalizedRisk.includes("decreased");
+  const hasNeutral = normalizedRisk.includes("neutral");
+  const hasMixed =
+    normalizedRisk.includes("mixed") ||
+    normalizedRisk.includes("unclear") ||
+    normalizedRisk.includes("uncertain");
+
+  if (
+    hasMixed ||
+    (hasIncreased && hasDecreased) ||
+    (hasIncreased && hasNeutral) ||
+    (hasDecreased && hasNeutral)
+  ) {
+    return "mixed";
+  }
+
+  if (hasIncreased) {
+    return "increased";
+  }
+
+  if (hasDecreased) {
+    return "decreased";
+  }
+
+  if (hasNeutral) {
+    return "neutral";
+  }
+
+  return "neutral";
+}
+
+function riskDirectionStyles(riskDirection: string) {
+  const tone = getRiskTone(riskDirection);
+
+  if (tone === "increased") {
     return "border-red-400/25 bg-red-400/[0.08] text-red-200";
   }
 
-  if (normalizedRisk.includes("decreased")) {
+  if (tone === "decreased") {
     return "border-[#8ee68b]/25 bg-[#8ee68b]/10 text-[#a8f5a5]";
   }
 
-  if (
-    normalizedRisk.includes("unclear") ||
-    normalizedRisk.includes("uncertain")
-  ) {
+  if (tone === "mixed") {
     return "border-amber-300/25 bg-amber-300/[0.08] text-amber-200";
   }
 
-  return "border-white/10 bg-white/[0.035] text-zinc-300";
+  return "border-white/10 bg-white/[0.04] text-zinc-300";
+}
+
+function riskLabel(riskDirection: string) {
+  const tone = getRiskTone(riskDirection);
+
+  if (tone === "mixed") {
+    return "Mixed";
+  }
+
+  if (tone === "increased") {
+    return "Increased";
+  }
+
+  if (tone === "decreased") {
+    return "Decreased";
+  }
+
+  return "Neutral";
 }
 
 function confidenceStyles(confidence: string) {
   const normalizedConfidence = confidence.toLowerCase();
 
   if (normalizedConfidence.includes("high")) {
-    return "border-[#8ee68b]/25 bg-[#8ee68b]/10 text-[#a8f5a5]";
+    return "border-[#8ee68b]/25 bg-[#8ee68b]/10 text-[#c8ffc5]";
   }
 
   if (normalizedConfidence.includes("medium")) {
@@ -151,7 +199,7 @@ function confidenceStyles(confidence: string) {
     return "border-red-400/25 bg-red-400/[0.08] text-red-200";
   }
 
-  return "border-white/10 bg-white/[0.035] text-zinc-300";
+  return "border-white/10 bg-white/[0.04] text-zinc-300";
 }
 
 function splitEvidence(evidence: string) {
@@ -238,7 +286,7 @@ export default function ReportFeed() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-2xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-2xl border border-red-400/20 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
@@ -258,10 +306,10 @@ export default function ReportFeed() {
           </p>
         </div>
       ) : (
-        <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-[#070906] lg:grid-cols-[320px_minmax(0,1fr)]">
-          <aside className="border-b border-white/10 bg-black/20 lg:border-b-0 lg:border-r">
+        <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-[#050604] lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="border-b border-white/10 bg-black/25 lg:border-b-0 lg:border-r lg:border-white/10">
             <div className="border-b border-white/10 px-5 py-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600">
                 Report history
               </div>
 
@@ -270,10 +318,11 @@ export default function ReportFeed() {
               </div>
             </div>
 
-            <div className="max-h-[760px] overflow-y-auto">
+            <div className="max-h-[780px] overflow-y-auto">
               {reports.map((report) => {
                 const isSelected = report.id === selectedReport?.id;
                 const parsed = parseReport(report.summary);
+                const riskText = parsed.riskDirection || report.confidence_score;
 
                 return (
                   <button
@@ -303,8 +352,8 @@ export default function ReportFeed() {
                     <div className="mt-4 flex items-center justify-between gap-3">
                       <span className="truncate text-[11px] text-zinc-600">
                         {parsed.riskDirection
-                          ? `Risk: ${parsed.riskDirection}`
-                          : report.confidence_score}
+                          ? `Risk: ${riskLabel(parsed.riskDirection)}`
+                          : riskText}
                       </span>
 
                       {isSelected && (
@@ -318,7 +367,7 @@ export default function ReportFeed() {
           </aside>
 
           {selectedReport && parsedReport && (
-            <article className="min-w-0 bg-[#070906]">
+            <article className="min-w-0 bg-[#050604]">
               <header className="border-b border-white/10 px-6 py-6 md:px-8">
                 <div className="flex flex-col justify-between gap-5 xl:flex-row xl:items-start">
                   <div>
@@ -329,11 +378,11 @@ export default function ReportFeed() {
 
                       {parsedReport.riskDirection && (
                         <span
-                          className={`rounded-full border px-3 py-1 text-xs font-medium ${riskDirectionStyles(
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${riskDirectionStyles(
                             parsedReport.riskDirection
                           )}`}
                         >
-                          {parsedReport.riskDirection}
+                          {riskLabel(parsedReport.riskDirection)}
                         </span>
                       )}
                     </div>
@@ -376,11 +425,11 @@ export default function ReportFeed() {
 
                     <div className="grid gap-4 xl:grid-cols-3">
                       {parsedReport.riskDirection && (
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                        <div className="min-h-[230px] rounded-2xl border border-white/10 bg-white/[0.025] p-6">
                           <div className="muted-label">Risk direction</div>
 
                           <div
-                            className={`mt-4 inline-flex rounded-xl border px-3 py-2 text-xs font-medium leading-5 ${riskDirectionStyles(
+                            className={`mt-5 inline-flex rounded-xl border px-3 py-2 text-sm font-semibold leading-6 ${riskDirectionStyles(
                               parsedReport.riskDirection
                             )}`}
                           >
@@ -390,11 +439,11 @@ export default function ReportFeed() {
                       )}
 
                       {parsedReport.confidence && (
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                        <div className="min-h-[230px] rounded-2xl border border-white/10 bg-white/[0.025] p-6">
                           <div className="muted-label">Confidence</div>
 
                           <div
-                            className={`mt-4 rounded-xl border px-3 py-2 text-sm leading-6 ${confidenceStyles(
+                            className={`mt-5 rounded-xl border px-3 py-2 text-sm leading-6 ${confidenceStyles(
                               parsedReport.confidence
                             )}`}
                           >
@@ -404,10 +453,10 @@ export default function ReportFeed() {
                       )}
 
                       {parsedReport.uncertainty && (
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                        <div className="min-h-[230px] rounded-2xl border border-white/10 bg-white/[0.025] p-6">
                           <div className="muted-label">Uncertainty</div>
 
-                          <p className="mt-4 text-sm leading-7 text-zinc-300">
+                          <p className="mt-5 text-sm leading-7 text-zinc-300">
                             {parsedReport.uncertainty}
                           </p>
                         </div>
@@ -438,7 +487,7 @@ export default function ReportFeed() {
                       <section className="max-w-5xl">
                         <div className="muted-label">Key evidence</div>
 
-                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-5">
+                        <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-5">
                           {evidenceLines.length > 1 ? (
                             <div className="space-y-3">
                               {evidenceLines.map((line, index) => (
